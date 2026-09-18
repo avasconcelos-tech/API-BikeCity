@@ -14,18 +14,15 @@ $('btn-logout').onclick = () => {
 };
 
 function estoqueBaixo(produto) {
-    return Number(produto.estoque_atual || 0) <= Math.max(
-        Number(produto.estoque_minimo || 0),
-        Number(produto.demanda_prevista || 0)
-    );
+    return Number(produto.estoque_atual || 0) <= 5;
 }
 
 function abrirProdutos(titulo, lista) {
     $('titulo-produtos-dashboard').textContent = titulo;
-    $('thead-dashboard-produtos').innerHTML = '<tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Localização</th></tr>';
+    $('thead-dashboard-produtos').innerHTML = '<tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Localização</th></tr>';
     $('tbody-dashboard-produtos').innerHTML = lista.length
-        ? lista.map((produto) => `<tr><td>${produto.nome}</td><td>${produto.categoria}</td><td>${produto.estoque_atual}</td><td>${produto.estoque_minimo}</td><td>${produto.localizacao_deposito || '-'}</td></tr>`).join('')
-        : '<tr><td colspan="5">Nenhum produto encontrado.</td></tr>';
+        ? lista.map((produto) => `<tr><td>${produto.nome}</td><td>${produto.categoria}</td><td>${produto.estoque_atual}</td><td>${produto.localizacao_deposito || '-'}</td></tr>`).join('')
+        : '<tr><td colspan="4">Nenhum produto encontrado.</td></tr>';
     $('modal-dashboard-produtos').classList.add('active');
     $('modal-dashboard-produtos').setAttribute('aria-hidden', 'false');
 }

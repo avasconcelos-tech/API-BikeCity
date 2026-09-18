@@ -13,8 +13,8 @@ function listarProdutos(incluirInativos = false) {
 function criarProduto(produtoInput) {
   const resultado = db.prepare(
     `INSERT INTO produtos (nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo,tipo_rastreabilidade,demanda_prevista)
-     VALUES (?,?,?,?,?,?,?,?,0,?,?,1,?,?)`
-  ).run(produtoInput.nome,produtoInput.codigo_interno,produtoInput.categoria,produtoInput.unidade_medida,produtoInput.localizacao_deposito,produtoInput.fornecedor_id??null,produtoInput.custo??0,produtoInput.dimensoes??null,produtoInput.estoque_minimo??5,produtoInput.estado_montagem??'NAO_APLICA',produtoInput.tipo_rastreabilidade??'NENHUMA', produtoInput.demanda_prevista??0);
+     VALUES (?,?,?,?,?,?,?,?,0,5,?,1,?,?)`
+  ).run(produtoInput.nome,produtoInput.codigo_interno,produtoInput.categoria,produtoInput.unidade_medida,produtoInput.localizacao_deposito,produtoInput.fornecedor_id??null,produtoInput.custo??0,produtoInput.estado_montagem??'NAO_APLICA',produtoInput.tipo_rastreabilidade??'NENHUMA', produtoInput.demanda_prevista??0);
   return { id:Number(resultado.lastInsertRowid), ...produtoInput, estoque_atual:0, ativo:true };
 }
 
@@ -31,7 +31,7 @@ function atualizarProduto(id, dadosParaAtualizar) {
   const campos = [];
   const valores = [];
 
-  const camposPermitidos = ['nome', 'codigo_interno', 'categoria', 'unidade_medida', 'localizacao_deposito', 'fornecedor_id', 'custo', 'dimensoes', 'estoque_minimo', 'estado_montagem', 'imagem_url', 'tipo_rastreabilidade', 'demanda_prevista'];
+  const camposPermitidos = ['nome', 'codigo_interno', 'categoria', 'unidade_medida', 'localizacao_deposito', 'fornecedor_id', 'custo', 'dimensoes', 'estado_montagem', 'imagem_url', 'tipo_rastreabilidade', 'demanda_prevista'];
   for (const campo of camposPermitidos) {
     if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, campo)) {
       campos.push(`${campo} = ?`);
