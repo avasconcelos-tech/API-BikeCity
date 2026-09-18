@@ -38,3 +38,22 @@ Usuário inicial de desenvolvimento: `gerente@teste.com` / `senha123`.
 ## Testes
 
 A suíte atual contém 24 testes e foi validada com 24/24 aprovados.
+
+## Acesso por vários computadores na mesma rede
+
+O servidor agora escuta em `0.0.0.0:3000` e o front-end identifica automaticamente o endereço do computador que está hospedando a aplicação.
+
+No computador servidor:
+
+```bash
+npm install
+npm start
+```
+
+Use no computador dos colegas o IPv4 exibido pelo terminal, por exemplo:
+
+```text
+http://192.168.1.15:3000/login.html
+```
+
+Não use `localhost`/`127.0.0.1` no computador do colega. Se o Firewall do Windows bloquear a porta, execute `liberar-porta-3000-firewall.bat` como administrador.

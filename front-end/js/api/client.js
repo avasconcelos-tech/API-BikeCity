@@ -5,30 +5,44 @@ export async function apiFetch(endpoint, options = {}) {
     const token = obterToken();
 
     const headers = {
-        'Content-Type': 'application/json',
-        ...(token
-            ? { Authorization: `Bearer ${token}` }
-            : {}),
-        ...options.headers
+        ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {})
     };
 
-    // Garante que a requisição vá para a API,
-    // e não para o Live Server (porta 5500).
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = endpoint.startsWith('http')
+        ? endpoint
+        : `${API_BASE_URL}${endpoint}`;
 
-    const resposta = await fetch(url, {
-        ...options,
-        headers
-    });
+    let resposta;
+
+    try {
+        resposta = await fetch(url, {
+            ...options,
+            headers
+        });
+    } catch (erro) {
+        throw new Error(
+            `Não foi possível conectar à API em ${API_BASE_URL}. ` +
+            `Verifique se o servidor está ligado e se a porta 3000 está liberada na rede.`
+        );
+    }
+
+    const texto = await resposta.text();
+    let dados = {};
+
+    try {
+        dados = texto ? JSON.parse(texto) : {};
+    } catch {
+        dados = {};
+    }
 
     if (!resposta.ok) {
-        const erroData = await resposta.json().catch(() => ({}));
-
         throw new Error(
-            erroData.mensagem ||
+            dados.mensagem ||
             `Erro na requisição: ${resposta.status}`
         );
     }
 
-    return resposta.json();
+    return dados;
 }

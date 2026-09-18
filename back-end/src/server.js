@@ -1,5 +1,6 @@
 const app = require("./app");
 const conexaoBanco = require("./repositorios/conexaoBanco");
+const os = require('os');
 
 const PORT = process.env.PORT || 3000;
 
@@ -15,9 +16,26 @@ async function startServer() {
     
     console.log("Conexão com SQLite estabelecida com sucesso! ✔️");
 
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT} 🚀`);
-      console.log(`Rotas MVC ativas e escutando!`);
+    const HOST = process.env.HOST || '0.0.0.0';
+
+    app.listen(PORT, HOST, () => {
+      console.log(`Servidor rodando em ${HOST}:${PORT} 🚀`);
+      console.log(`Acesso local: http://localhost:${PORT}/login.html`);
+
+      const interfaces = os.networkInterfaces();
+      const enderecos = [];
+      for (const lista of Object.values(interfaces)) {
+        for (const item of lista || []) {
+          if (item.family === 'IPv4' && !item.internal) enderecos.push(item.address);
+        }
+      }
+
+      if (enderecos.length) {
+        console.log('Acesso pela rede local:');
+        enderecos.forEach(ip => console.log(`  http://${ip}:${PORT}/login.html`));
+      }
+
+      console.log('Deixe esta janela aberta enquanto os colegas utilizarem o sistema.');
     });
   } catch (err) {
     console.error("Erro fatal ao conectar ao banco de dados:", err);
