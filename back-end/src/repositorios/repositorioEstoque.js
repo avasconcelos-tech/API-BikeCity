@@ -11,10 +11,10 @@ function listarMovimentacoes(produtoId = null) {
 }
 function adicionarMovimentacao(m) {
   const r = db.prepare(`INSERT INTO movimentacoes
-    (produto_id,usuario_id,tipo,quantidade,data_movimentacao,numero_nota_fiscal,numero_pedido,numero_pedido_venda,destinatario,motivo,fornecedor_id,tipo_transporte,montado_desmontado,localizacao,observacao)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    (produto_id,usuario_id,tipo,quantidade,data_movimentacao,numero_nota_fiscal,numero_pedido,numero_pedido_venda,destinatario,motivo,fornecedor_id,tipo_transporte,montado_desmontado,localizacao,observacao,estoque_anterior,estoque_novo)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       m.produto_id,m.usuario_id,m.tipo,m.quantidade,m.data_movimentacao,m.numero_nota_fiscal??null,m.numero_pedido??null,m.numero_pedido_venda??null,
-      m.destinatario??null,m.motivo??null,m.fornecedor_id??null,m.tipo_transporte??null,m.montado_desmontado??null,m.localizacao??null,m.observacao??null);
+      m.destinatario??null,m.motivo??null,m.fornecedor_id??null,m.tipo_transporte??null,m.montado_desmontado??null,m.localizacao??null,m.observacao??null,m.estoque_anterior??null,m.estoque_novo??null);
   return { id:Number(r.lastInsertRowid), ...m };
 }
 function adicionarRastreabilidade(r) {

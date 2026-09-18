@@ -2,7 +2,8 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-const caminhoBanco = path.join(__dirname, '../../database.sqlite');
+const nomeBanco = process.env.NODE_ENV === 'test' ? 'database.test.sqlite' : 'database.sqlite';
+const caminhoBanco = path.join(__dirname, '../../', nomeBanco);
 const db = new DatabaseSync(caminhoBanco);
 
 function colunasDaTabela(tabela) {
@@ -67,7 +68,9 @@ function criarEstrutura() {
       tipo_transporte TEXT,
       montado_desmontado TEXT,
       localizacao TEXT,
-      observacao TEXT
+      observacao TEXT,
+      estoque_anterior INTEGER,
+      estoque_novo INTEGER
     );
     CREATE TABLE IF NOT EXISTS rastreabilidade (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,6 +146,8 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('movimentacoes', 'montado_desmontado', 'TEXT');
   adicionarColunaSeFaltar('movimentacoes', 'localizacao', 'TEXT');
   adicionarColunaSeFaltar('movimentacoes', 'observacao', 'TEXT');
+  adicionarColunaSeFaltar('movimentacoes', 'estoque_anterior', 'INTEGER');
+  adicionarColunaSeFaltar('movimentacoes', 'estoque_novo', 'INTEGER');
   adicionarColunaSeFaltar('alertas', 'produto_id', 'INTEGER');
   adicionarColunaSeFaltar('alertas', 'mensagem', 'TEXT');
   adicionarColunaSeFaltar('alertas', 'lido', 'INTEGER DEFAULT 0');
@@ -181,7 +186,7 @@ seedDadosIniciais();
 
 const conexaoInstancia = {
   getDb: () => db,
-  resetarBanco: () => {
+  resetarBancoParaTestes: () => {
     db.exec(`DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`);
     seedDadosIniciais();
   }

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node --no-warnings back-end/src/server.js",
     "dev": "node --no-warnings --watch back-end/src/server.js",
-    "test": "node --test back-end/tests/api.test.js"
+    "test": "set NODE_ENV=test&& node --test back-end/tests/api.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

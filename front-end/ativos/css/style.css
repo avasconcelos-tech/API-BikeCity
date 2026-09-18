@@ -75,12 +75,12 @@ button { cursor: pointer; }
     min-height: 46px;
     padding: 10px 13px;
     border-radius: 12px;
-    color: #d8edf3;
+    color: #f3fbfd;
     text-decoration: none;
     font-weight: 650;
     transition: .18s ease;
 }
-.sidebar-nav a:hover { background: rgba(255,255,255,.09); color: #fff; transform: translateX(2px); }
+.sidebar-nav a:hover { background: rgba(255,255,255,.12); color: #fff; transform: translateX(2px); }
 .sidebar-nav a.active { background: linear-gradient(90deg, rgba(37,169,220,.3), rgba(66,189,131,.22)); color: #fff; box-shadow: inset 3px 0 0 var(--green-500); }
 
 .mobile-menu-btn { display: none; }
@@ -161,12 +161,12 @@ button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 .btn-secondary { background: var(--green-700); }
 .btn-danger { background: var(--danger); }
 
-.table-responsive { width: 100%; max-width: 100%; overflow-x: hidden; border-radius: var(--radius); }
-table { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; border-radius: var(--radius); overflow: hidden; }
+.table-responsive { width: 100%; max-width: 100%; overflow-x: auto; border-radius: var(--radius); -webkit-overflow-scrolling: touch; }
+table { width: 100%; max-width: none; min-width: 720px; border-collapse: separate; border-spacing: 0; border-radius: var(--radius); overflow: hidden; }
 .products-table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .products-table { min-width: 900px; table-layout: auto; }
 .products-table th, .products-table td { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
-th, td { padding: 13px 15px; text-align: left; border-bottom: 1px solid #e4f0f3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+th, td { padding: 13px 15px; text-align: left; border-bottom: 1px solid #e4f0f3; white-space: nowrap; overflow-wrap: normal; word-break: normal; }
 .btn-editar-produto { min-width: 76px; white-space: nowrap; word-break: keep-all; }
 th { background: var(--blue-100); color: var(--blue-900); font-size: .86rem; }
 tbody tr:hover { background: #f1fafc; }

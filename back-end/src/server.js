@@ -5,7 +5,7 @@ const os = require('os');
 const PORT = process.env.PORT || 5500;
 
 function resetState() {
-  conexaoBanco.resetarBanco();
+  if (process.env.NODE_ENV === 'test') conexaoBanco.resetarBancoParaTestes();
 }
 
 async function startServer() {

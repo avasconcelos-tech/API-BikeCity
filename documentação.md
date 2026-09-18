@@ -1181,6 +1181,7 @@ Requer o envio de:
 
 * Sobrescreve o valor de `estoque_atual` para o valor exato informado em `nova_quantidade`.
 * Registra obrigatoriamente um log na tabela `auditoria`.
+* Registra também uma movimentação do tipo `AJUSTE_MANUAL` no histórico de estoque.
 * O log contém:
 
   * justificativa;
