@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id),modal=$('modal-produto');
 $('btn-novo-produto').onclick=async()=>{await carregarFornecedores();modal.classList.add('active');};$('btn-fechar-modal').onclick=()=>modal.classList.remove('active');
 async function carregarFornecedores(){const r=await getFornecedores();$('fornecedor_id').innerHTML='<option value="">Selecione...</option>'+(r.dados||[]).map(f=>`<option value="${f.id}">${f.nome}</option>`).join('');}
 const usuario=obterUsuarioLogado();
-const podeEditar=usuario?.perfil==='GERENTE';
+const podeEditar=usuario?.perfil==='ANALISTA'||usuario?.perfil==='GERENTE';
 const modalEdicao=$('modal-editar-produto');
 let produtoEmEdicao=null;
 function abrirEdicao(produto){produtoEmEdicao=produto;$('editar-nome').value=produto.nome||'';$('editar-categoria').value=produto.categoria||'';$('editar-localizacao').value=produto.localizacao_deposito||'';$('editar-custo').value=produto.custo??0;modalEdicao.classList.add('active');}
