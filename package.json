@@ -5,8 +5,8 @@
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node --no-warnings src/server.js",
-    "dev": "node --no-warnings --watch src/server.js",
+    "start": "node --no-warnings back-end/src/server.js",
+    "dev": "node --no-warnings --watch back-end/src/server.js",
     "test": "node --test back-end/tests/api.test.js"
   },
   "dependencies": {

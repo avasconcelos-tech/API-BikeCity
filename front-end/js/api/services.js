@@ -3,6 +3,7 @@ export function postLogin(email,senha){return apiFetch('/api/v1/auth/login',{met
 export function getProdutos(incluirInativos=false){return apiFetch(`/api/v1/produtos${incluirInativos?'?incluirInativos=true':''}`);}
 export function getProduto(id){return apiFetch(`/api/v1/produtos/${id}`);}
 export function postProduto(dados){return apiFetch('/api/v1/produtos',{method:'POST',body:JSON.stringify(dados)});}
+export function putProduto(id,dados){return apiFetch(`/api/v1/produtos/${id}`,{method:'PUT',body:JSON.stringify(dados)});}
 export function postEntradaEstoque(dados){return apiFetch('/api/v1/estoque/entradas',{method:'POST',body:JSON.stringify(dados)});}
 export function postSaidaEstoque(dados){return apiFetch('/api/v1/estoque/saidas',{method:'POST',body:JSON.stringify(dados)});}
 export function postDevolucao(dados){return apiFetch('/api/v1/estoque/devolucoes',{method:'POST',body:JSON.stringify(dados)});}

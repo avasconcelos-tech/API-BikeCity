@@ -10,7 +10,7 @@ npm test
 npm start
 ```
 
-Abra `http://localhost:3000/login.html`.
+Abra `http://localhost:5500/login.html`.
 
 Usuário inicial de desenvolvimento: `gerente@teste.com` / `senha123`.
 

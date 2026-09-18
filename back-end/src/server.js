@@ -2,7 +2,7 @@ const app = require("./app");
 const conexaoBanco = require("./repositorios/conexaoBanco");
 const os = require('os');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5500;
 
 function resetState() {
   conexaoBanco.resetarBanco();

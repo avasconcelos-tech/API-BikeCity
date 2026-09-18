@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.listarProdutos);
 router.get('/:id', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.buscarProdutoPorId);
 router.post('/', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.criarProduto);
-router.put('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.atualizarProduto);
+router.put('/:id', authenticate, authorizePerfil('GERENTE'), controladorProduto.atualizarProduto);
 router.delete('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.inativarProduto);
 
 router.post('/:id/imagem', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), (req, res) => {
