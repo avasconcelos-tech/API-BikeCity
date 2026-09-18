@@ -1,7 +1,9 @@
 import { postLogin } from '../api/services.js';
 import { salvarToken } from '../utilitarios/auth.js';
+import { habilitarMostrarSenha } from '../utilitarios/mostrarSenha.js';
 
 const formLogin = document.getElementById('form-login');
+habilitarMostrarSenha('senha', 'mostrar-senha');
 
 formLogin.addEventListener('submit', async (e) => {
     e.preventDefault();
