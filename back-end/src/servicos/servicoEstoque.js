@@ -1,0 +1,85 @@
+const repositorioProduto = require('../repositorios/repositorioProduto');
+const repositorioEstoque = require('../repositorios/repositorioEstoque');
+const repositorioFornecedor = require('../repositorios/repositorioFornecedor');
+const conexaoBanco = require('../repositorios/conexaoBanco');
+const db = conexaoBanco.getDb();
+
+function erro(codigo, mensagem) { return { statusCode: codigo, payload: { status: 'erro', mensagem } }; }
+function sucesso(codigo, mensagem, dados) { return { statusCode: codigo, payload: { status: 'sucesso', mensagem, dados } }; }
+function obrigatorio(v, campo) { return v === undefined || v === null || String(v).trim() === '' ? `${campo} é obrigatório.` : null; }
+function quantidadePositiva(v,c='quantidade'){const n=Number(v);return Number.isInteger(n)&&n>0?null:`${c} deve ser um número inteiro maior que zero.`;}
+
+function tipoRastreabilidade(produto) {
+  const tipo = String(produto.tipo_rastreabilidade || '').toUpperCase();
+  if (tipo !== 'NENHUMA') return tipo;
+  const cat = String(produto.categoria || '').toUpperCase();
+  if (cat === 'COMPONENTE_ELETRICO') return 'BATERIA';
+  if (cat === 'VEICULO' || cat === 'BICICLETA' || cat === 'PATINETE') return 'VEICULO';
+  if (cat === 'PECA_SEGURANCA') return 'PECA_SEGURANCA';
+  return 'NENHUMA';
+}
+function validarRastreabilidade(produto, body={}) {
+  const tipo = tipoRastreabilidade(produto);
+  if (tipo === 'BATERIA') {
+    if (!body.numero_serie || !body.data_validade) return 'Para baterias, é obrigatório informar numero_serie e data_validade.';
+  } else if (tipo === 'MOTOR_CONTROLADOR') {
+    if (!body.numero_serie || !body.lote) return 'Para motores e controladores, é obrigatório informar numero_serie e lote.';
+  } else if (tipo === 'VEICULO') {
+    if (!body.identificador_unico) return 'Para bicicletas e patinetes, é obrigatório informar o ID único de rastreabilidade.';
+  } else if (tipo === 'PECA_SEGURANCA') {
+    if (!body.lote) return 'Para peças de segurança (freios e pneus), é obrigatório informar o lote.';
+  }
+  return null;
+}
+function validarEntrada(produto,b) {
+  let e=obrigatorio(b.produto_id,'produto_id')||quantidadePositiva(b.quantidade); if(e)return e;
+  e=obrigatorio(b.numero_nota_fiscal,'numero_nota_fiscal')||obrigatorio(b.numero_pedido_compra || b.numero_pedido,'numero_pedido_compra'); if(e)return e;
+  e=validarRastreabilidade(produto,b); if(e)return e;
+  return null;
+}
+
+function listarMovimentacoes(id=null){return repositorioEstoque.listarMovimentacoes(id);}
+function listarAlertas(){return repositorioEstoque.listarAlertas();}
+function listarRastreabilidade(id=null){return repositorioEstoque.listarRastreabilidade(id);}
+
+function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numeroNotaFiscal, itens, body={}) {
+  const produto=repositorioProduto.buscarProdutoPorId(produtoId); if(!produto)return erro(404,'Produto não encontrado.');
+  const payload={...body,produto_id:produtoId,quantidade,numero_nota_fiscal:numeroNotaFiscal,numero_pedido_compra:body.numero_pedido_compra||body.numero_pedido};
+  const validacao=validarEntrada(produto,payload); if(validacao)return erro(400,validacao);
+  if(!fornecedorId && !body.fornecedor_id) return erro(400,'Fornecedor é obrigatório no recebimento.');
+  fornecedorId=fornecedorId||body.fornecedor_id;
+  if(!repositorioFornecedor.buscarFornecedorPorId(fornecedorId))return erro(400,'Fornecedor informado não existe.');
+  const n=Number(quantidade), novo=Number(produto.estoque_atual)+n, agora=new Date().toISOString();
+  db.exec('BEGIN');
+  try {
+    repositorioProduto.atualizarEstoqueProduto(produtoId,novo);
+    const mov=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'ENTRADA',quantidade:n,data_movimentacao:agora,numero_nota_fiscal:numeroNotaFiscal,numero_pedido:payload.numero_pedido_compra,fornecedor_id:fornecedorId,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao||produto.localizacao_deposito,observacao:body.observacao});
+    const tipo=tipoRastreabilidade(produto);
+    if(tipo!=='NENHUMA') for(let i=0;i<n;i++) repositorioEstoque.adicionarRastreabilidade({produto_id:Number(produtoId),movimentacao_id:mov.id,tipo,numero_serie:body.numero_serie&&n===1?body.numero_serie:(body.numero_serie?`${body.numero_serie}-${i+1}`:null),lote:body.lote,data_validade:body.data_validade,identificador_unico:body.identificador_unico&&n===1?body.identificador_unico:(body.identificador_unico?`${body.identificador_unico}-${i+1}`:null),localizacao:body.localizacao||produto.localizacao_deposito});
+    db.exec('COMMIT');
+    if(novo<=Math.max(Number(produto.estoque_minimo||0),Number(produto.demanda_prevista||0))) repositorioEstoque.adicionarAlerta({produto_id:produto.id,mensagem:`Estoque baixo para ${produto.nome}`});
+    return sucesso(201,'Entrada registrada com sucesso.',{movimentacao_id:mov.id,produto_id:Number(produtoId),quantidade_adicionada:n,novo_estoque_total:novo});
+  } catch(e){db.exec('ROLLBACK'); throw e;}
+}
+
+function registrarSaida(produtoId,quantidade,destinatario,motivo,usuarioId,body={}) {
+  const p=repositorioProduto.buscarProdutoPorId(produtoId);if(!p)return erro(404,'Produto não encontrado.');
+  let e=quantidadePositiva(quantidade)||obrigatorio(destinatario,'destinatario')||obrigatorio(motivo,'motivo')||obrigatorio(body.numero_pedido_venda,'numero_pedido_venda');if(e)return erro(400,e);
+  const n=Number(quantidade);if(n>p.estoque_atual)return erro(400,'Estoque insuficiente para a quantidade solicitada.');
+  const novo=p.estoque_atual-n, agora=new Date().toISOString();
+  db.exec('BEGIN');try{
+    repositorioProduto.atualizarEstoqueProduto(produtoId,novo);
+    const mov=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'SAIDA',quantidade:n,data_movimentacao:agora,numero_pedido_venda:body.numero_pedido_venda,destinatario,motivo,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao,observacao:body.observacao});
+    const rast=repositorioEstoque.listarRastreabilidade(produtoId).filter(x=>x.status==='EM_ESTOQUE').slice(0,n);
+    for(const r of rast) db.prepare('UPDATE rastreabilidade SET status=\'SAIDA\' WHERE id=?').run(r.id);
+    db.exec('COMMIT');
+    const alerta=novo<=Math.max(Number(p.estoque_minimo||0),Number(p.demanda_prevista||0));if(alerta){repositorioEstoque.adicionarAlerta({produto_id:p.id,mensagem:`Estoque baixo para ${p.nome}`});for(const setor of ['COMPRAS','LOGISTICA'])repositorioEstoque.adicionarNotificacao({setor,titulo:'Estoque baixo',mensagem:`${p.nome} atingiu o estoque mínimo.`,produto_id:p.id});}
+    return sucesso(201,'Saída de estoque registrada com sucesso.',{movimentacao_id:mov.id,novo_estoque_total:novo,alerta_gerado:alerta});
+  }catch(e){db.exec('ROLLBACK');throw e;}
+}
+function registrarAjusteManual(produtoId,novaQuantidade,justificativa,usuarioId){const p=repositorioProduto.buscarProdutoPorId(produtoId);if(!p)return erro(404,'Produto não encontrado.');const n=Number(novaQuantidade);if(!Number.isInteger(n)||n<0)return erro(400,'nova_quantidade deve ser um número inteiro maior ou igual a 0.');if(!justificativa||!String(justificativa).trim())return erro(400,'justificativa é obrigatória.');const antigo=p.estoque_atual;repositorioProduto.atualizarEstoqueProduto(produtoId,n);repositorioEstoque.adicionarAuditoria({produto_id:Number(produtoId),usuario_id:usuarioId,acao:'AJUSTE_MANUAL',antigo_valor:antigo,novo_valor:n,justificativa,data:new Date().toISOString()});return sucesso(201,'Ajuste manual realizado com sucesso.',{produto_id:Number(produtoId),estoque_anterior:antigo,estoque_atual:n,log_auditoria_registrado:true});}
+function registrarDevolucao(d,usuarioId){const p=repositorioProduto.buscarProdutoPorId(d.produto_id);if(!p)return erro(404,'Produto não encontrado.');let e=quantidadePositiva(d.quantidade)||obrigatorio(d.origem,'origem')||obrigatorio(d.motivo,'motivo')||obrigatorio(d.estado_produto,'estado_produto');if(e)return erro(400,e);if(d.origem==='CLIENTE'&&!d.numero_pedido_venda)return erro(400,'numero_pedido_venda é obrigatório para devolução de cliente.');const reap=d.estado_produto==='INTACTO'&&Boolean(d.reaproveitavel);const dev=repositorioEstoque.adicionarDevolucao({...d,usuario_id:usuarioId,reaproveitavel:reap,data_devolucao:new Date().toISOString()});if(reap)repositorioProduto.atualizarEstoqueProduto(p.id,p.estoque_atual+Number(d.quantidade));const mov=repositorioEstoque.adicionarMovimentacao({produto_id:p.id,usuario_id:usuarioId,tipo:'DEVOLUCAO',quantidade:Number(d.quantidade),data_movimentacao:new Date().toISOString(),numero_pedido_venda:d.numero_pedido_venda,motivo:d.motivo,observacao:`Origem: ${d.origem}; Estado: ${d.estado_produto}`});return sucesso(201,'Devolução registrada com sucesso.',{devolucao_id:dev.id,movimentacao_id:mov.id,reaproveitada:reap});}
+function obterResumo(){return repositorioEstoque.resumo();}
+function obterRelatorio(){return repositorioEstoque.relatorio();}
+function buscarPorCodigo(codigo){return db.prepare(`SELECT * FROM produtos WHERE ativo=1 AND codigo_interno=?`).get(codigo)||null;}
+module.exports={listarMovimentacoes,listarAlertas,listarRastreabilidade,registrarEntrada,registrarSaida,registrarAjusteManual,registrarDevolucao,obterResumo,obterRelatorio,buscarPorCodigo,validarRastreabilidade};

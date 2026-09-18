@@ -1,0 +1,15 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BikeCity - Usuários</title><link rel="stylesheet" href="./ativos/css/style.css"></head><body><div class="wrapper"><nav class="sidebar">
+    <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="8" cy="23" r="5"></circle><circle cx="24" cy="23" r="5"></circle><path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span>
+        <span class="brand-name">Bike<span>City</span></span>
+    </a>
+    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false"><span></span></button>
+    <ul class="sidebar-nav">
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="produtos.html">Produtos</a></li>
+        <li><a href="estoque.html">Estoque</a></li>
+        <li><a href="relatorios.html">Relatórios</a></li>
+        <li><a href="usuarios.html" class="NAV_USU">Usuários</a></li>
+    </ul>
+</nav><main class="content"><div class="page-title"><h1>Usuários e Permissões</h1><button id="novo">+ Novo Usuário</button></div><div class="table-responsive"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th>Perfil</th><th>Status</th><th>Ação</th></tr></thead><tbody id="tbody"></tbody></table></div></main></div><div id="modal-usuario" class="modal-overlay"><div class="modal-card"><div class="modal-header"><h3>Novo Usuário</h3><button id="fechar" class="btn-close">&times;</button></div><form id="form"><input id="nome" placeholder="Nome completo" required><input id="email" type="email" placeholder="E-mail corporativo" required><input id="cargo" placeholder="Cargo" required><select id="perfil" required><option value="OPERACIONAL">Operacional</option><option value="ANALISTA">Analista</option><option value="GERENTE">Gerente</option></select><input id="senha" type="password" minlength="6" placeholder="Senha" required><button>Cadastrar</button></form></div></div><script type="module">import { inicializarNavegacao } from "./js/utilitarios/navigation.js"; inicializarNavegacao();</script>
+    <script type="module" src="./js/views/usuarios.js"></script></body></html>

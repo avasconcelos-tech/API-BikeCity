@@ -1,0 +1,18 @@
+const express=require('express');
+const c=require('../controladores/controladorEstoque');
+const {authenticate,authorizePerfil}=require('../servicos/servicoAutenticacao');
+const router=express.Router();
+const todos=authorizePerfil('OPERACIONAL','ANALISTA','GERENTE');
+router.get('/movimentacoes',authenticate,todos,c.listarMovimentacoes);
+router.get('/rastreabilidade',authenticate,todos,c.listarRastreabilidade);
+router.get('/alertas',authenticate,todos,c.listarAlertas);
+router.patch('/alertas/:id/lido',authenticate,todos,c.marcarAlerta);
+router.get('/notificacoes',authenticate,todos,c.notificacoes);
+router.get('/buscar-codigo/:codigo',authenticate,todos,c.buscarCodigo);
+router.get('/dashboard/resumo',authenticate,todos,c.resumo);
+router.get('/relatorios',authenticate,todos,c.relatorio);
+router.post('/entradas',authenticate,todos,c.registrarEntrada);
+router.post('/saidas',authenticate,todos,c.registrarSaida);
+router.post('/devolucoes',authenticate,todos,c.registrarDevolucao);
+router.post('/ajuste-manual',authenticate,authorizePerfil('GERENTE'),c.registrarAjusteManual);
+module.exports=router;
