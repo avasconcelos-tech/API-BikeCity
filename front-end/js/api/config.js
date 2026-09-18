@@ -1,1 +1,4 @@
-export const API_BASE_URL = 'http://localhost:5000/api/v1';
+const host = window.location.hostname || 'localhost';
+
+export const API_BASE_URL =
+    `${window.location.protocol}//${host}:3000/api/v1`;
