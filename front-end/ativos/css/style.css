@@ -1,18 +1,18 @@
 :root {
-    --blue-900: #12324a;
-    --blue-700: #1f78b4;
-    --blue-500: #27a9e1;
-    --blue-100: #eaf7fc;
-    --green-700: #238b63;
-    --green-500: #39b87f;
-    --green-100: #eaf8f1;
-    --ink: #193047;
-    --muted: #637587;
+    --blue-900: #103b56;
+    --blue-700: #176fa8;
+    --blue-500: #25a9dc;
+    --blue-100: #e7f6fb;
+    --green-700: #21845e;
+    --green-500: #42bd83;
+    --green-100: #e8f8f0;
+    --ink: #17364b;
+    --muted: #60798a;
     --surface: #ffffff;
-    --bg: #f4fbfd;
-    --border: #d9e8ee;
+    --bg: #f0f9fb;
+    --border: #cfe5eb;
     --danger: #d64545;
-    --shadow: 0 10px 30px rgba(20, 74, 98, .08);
+    --shadow: 0 10px 30px rgba(16, 59, 86, .1);
     --radius: 16px;
 }
 
@@ -38,7 +38,7 @@ button { cursor: pointer; }
     min-height: 100vh;
     padding: 24px 16px;
     color: #fff;
-    background: linear-gradient(180deg, var(--blue-900) 0%, #17425a 100%);
+    background: linear-gradient(180deg, var(--blue-900) 0%, #15506a 100%);
     border-right: 1px solid rgba(255,255,255,.08);
     position: sticky;
     top: 0;
@@ -75,13 +75,13 @@ button { cursor: pointer; }
     min-height: 46px;
     padding: 10px 13px;
     border-radius: 12px;
-    color: #d4e8f2;
+    color: #d8edf3;
     text-decoration: none;
     font-weight: 650;
     transition: .18s ease;
 }
 .sidebar-nav a:hover { background: rgba(255,255,255,.09); color: #fff; transform: translateX(2px); }
-.sidebar-nav a.active { background: linear-gradient(90deg, rgba(39,169,225,.25), rgba(57,184,127,.18)); color: #fff; box-shadow: inset 3px 0 0 var(--green-500); }
+.sidebar-nav a.active { background: linear-gradient(90deg, rgba(37,169,220,.3), rgba(66,189,131,.22)); color: #fff; box-shadow: inset 3px 0 0 var(--green-500); }
 
 .mobile-menu-btn { display: none; }
 
@@ -134,14 +134,14 @@ input, select, textarea {
     width: 100%;
     min-width: 0;
     padding: 11px 13px;
-    border: 1px solid #c9dce4;
+    border: 1px solid var(--border);
     border-radius: 10px;
-    background: #fff;
+    background: var(--surface);
     color: var(--ink);
     outline: none;
     transition: border-color .15s, box-shadow .15s;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(39,169,225,.12); }
+input:focus, select:focus, textarea:focus { border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(37,169,220,.14); }
 textarea { min-height: 90px; resize: vertical; }
 
 button {
@@ -163,9 +163,13 @@ button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
 .table-responsive { width: 100%; max-width: 100%; overflow-x: hidden; border-radius: var(--radius); }
 table { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; border-radius: var(--radius); overflow: hidden; }
-th, td { padding: 13px 15px; text-align: left; border-bottom: 1px solid #edf3f5; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+.products-table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.products-table { min-width: 900px; table-layout: auto; }
+.products-table th, .products-table td { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+th, td { padding: 13px 15px; text-align: left; border-bottom: 1px solid #e4f0f3; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+.btn-editar-produto { min-width: 76px; white-space: nowrap; word-break: keep-all; }
 th { background: var(--blue-100); color: var(--blue-900); font-size: .86rem; }
-tbody tr:hover { background: #f9fcfd; }
+tbody tr:hover { background: #f1fafc; }
 
 /* Cadastro de produto: modal usa a largura disponível, nunca uma largura fixa. */
 .modal-overlay {
@@ -189,27 +193,27 @@ tbody tr:hover { background: #f9fcfd; }
     overflow-y: auto;
     padding: clamp(18px, 3vw, 30px);
     border-radius: 20px;
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     box-shadow: 0 24px 70px rgba(10,45,65,.22);
 }
 .modal-card form { box-shadow: none; border: 0; padding: 0; margin: 0; }
 .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
 .modal-header h3 { margin: 0; font-size: 1.25rem; }
-.btn-close { width: 40px; min-height: 40px; padding: 0; border-radius: 10px; background: #edf7fa; color: var(--blue-900); box-shadow: none; font-size: 1.5rem; }
+.btn-close { width: 40px; min-height: 40px; padding: 0; border-radius: 10px; background: var(--blue-100); color: var(--blue-900); box-shadow: none; font-size: 1.5rem; }
 
 .login-body {
     display: grid;
     place-items: center;
     min-height: 100vh;
     padding: 20px;
-    background: linear-gradient(135deg, #eaf8fb 0%, #f2fbf5 100%);
+    background: linear-gradient(135deg, var(--blue-100) 0%, var(--green-100) 100%);
 }
 .login-card {
     width: min(100%, 430px);
     padding: clamp(24px, 5vw, 38px);
     border-radius: 22px;
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     box-shadow: 0 20px 60px rgba(20,74,98,.12);
 }
