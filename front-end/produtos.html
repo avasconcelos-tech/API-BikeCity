@@ -1,14 +1,174 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BikeCity - Produtos</title><link rel="stylesheet" href="./ativos/css/style.css"></head><body><div class="wrapper"><nav class="sidebar">
-    <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="8" cy="23" r="5"></circle><circle cx="24" cy="23" r="5"></circle><path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span>
-        <span class="brand-name">Bike<span>City</span></span>
-    </a>
-    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false"><span></span></button>
-    <ul class="sidebar-nav">
-        <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="produtos.html" class="NAV_PROD">Produtos</a></li>
-        <li><a href="estoque.html">Estoque</a></li>
-        <li><a href="relatorios.html">Relatórios</a></li>
-        <li><a href="usuarios.html">Usuários</a></li>
-    </ul>
-</nav><main class="content"><div class="page-title"><h1>Catálogo de Produtos</h1><button id="btn-novo-produto">+ Cadastrar Produto</button></div><div class="table-responsive products-table-responsive"><table class="products-table"><thead><tr><th>ID</th><th>Código</th><th>Nome</th><th>Categoria</th><th>Localização</th><th>Custo</th><th>Estoque</th><th>Status</th><th>Ação</th></tr></thead><tbody id="tbody-produtos"></tbody></table></div></main></div><div id="modal-produto" class="modal-overlay"><div class="modal-card"><div class="modal-header"><h3>Novo Produto</h3><button id="btn-fechar-modal" class="btn-close">&times;</button></div><form id="form-produto"><div class="form-group"><label>Nome completo</label><input id="nome" required></div><div class="form-row"><div class="form-group"><label>Código interno / barras</label><input id="codigo_interno" required></div><div class="form-group"><label>Categoria</label><select id="categoria" required><option value="">Selecione...</option><option value="VEICULO">Bicicletas / Patinetes</option><option value="PECA_ESTRUTURAL">Peça estrutural</option><option value="COMPONENTE_ELETRICO">Componente elétrico / Bateria</option><option value="PECA_SEGURANCA">Peça de segurança (freios/pneus)</option><option value="PECA_DESGASTE">Peça de desgaste</option><option value="ACESSORIO">Acessório</option></select></div></div><div class="form-row"><div class="form-group"><label>Unidade de medida</label><select id="unidade_medida" required><option value="UN">Unidade</option><option value="CX">Caixa</option><option value="PAR">Par</option></select></div><div class="form-group"><label>Custo (R$)</label><input id="custo" type="number" step="0.01" min="0" required></div></div><div class="form-row"><div class="form-group"><label>Fornecedor</label><select id="fornecedor_id" required></select></div><div class="form-group"><label>Localização (prateleira/depósito)</label><input id="localizacao_deposito" required></div><div class="form-group"><label>Estado</label><select id="estado_montagem"><option value="MONTADO">Montado</option><option value="DESMONTADO">Desmontado</option><option value="NAO_APLICA">Não se aplica</option></select></div></div><div class="form-group"><label>Tipo de rastreabilidade</label><select id="tipo_rastreabilidade"><option value="NENHUMA">Nenhuma</option><option value="BATERIA">Bateria — série + validade</option><option value="MOTOR_CONTROLADOR">Motor/controlador — série + lote</option><option value="VEICULO">Veículo — ID único</option><option value="PECA_SEGURANCA">Freio/pneu — lote</option></select></div><div class="form-group"><label>Demanda prevista no período</label><input id="demanda_prevista" type="number" min="0" value="0"></div><div class="form-group"><label>Dimensões (obrigatórias para peças grandes)</label><input id="dimensoes"></div><button>Salvar Produto</button></form></div></div><div id="modal-editar-produto" class="modal-overlay"><div class="modal-card"><div class="modal-header"><h3>Editar Produto</h3><button id="btn-fechar-edicao" class="btn-close" type="button">&times;</button></div><form id="form-editar-produto"><div class="form-group"><label for="editar-nome">Nome</label><input id="editar-nome" required></div><div class="form-group"><label for="editar-categoria">Categoria</label><select id="editar-categoria" required><option value="VEICULO">Bicicletas / Patinetes</option><option value="PECA_ESTRUTURAL">Peça estrutural</option><option value="COMPONENTE_ELETRICO">Componente elétrico / Bateria</option><option value="PECA_SEGURANCA">Peça de segurança (freios/pneus)</option><option value="PECA_DESGASTE">Peça de desgaste</option><option value="ACESSORIO">Acessório</option></select></div><div class="form-group"><label for="editar-localizacao">Localização</label><input id="editar-localizacao" required></div><div class="form-group"><label for="editar-custo">Custo (R$)</label><input id="editar-custo" type="number" step="0.01" min="0" required></div><button type="submit">Salvar alterações</button></form></div></div><script type="module" src="./js/views/produto.js"></script><script type="module">import { inicializarNavegacao } from "./js/utilitarios/navigation.js"; inicializarNavegacao();</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BikeCity - Produtos</title>
+    <link rel="stylesheet" href="./ativos/css/style.css" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <nav class="sidebar">
+        <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 32 32">
+              <circle cx="8" cy="23" r="5"></circle>
+              <circle cx="24" cy="23" r="5"></circle>
+              <path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg
+          ></span>
+          <span class="brand-name">Bike<span>City</span></span>
+        </a>
+        <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false">
+          <span></span>
+        </button>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="produtos.html" class="NAV_PROD">Produtos</a></li>
+          <li><a href="estoque.html">Estoque</a></li>
+          <li><a href="relatorios.html">Relatórios</a></li>
+          <li><a href="usuarios.html">Usuários</a></li>
+        </ul>
+      </nav>
+      <main class="content">
+        <div class="page-title">
+          <h1>Catálogo de Produtos</h1>
+          <button id="btn-novo-produto">+ Cadastrar Produto</button>
+        </div>
+        <div class="table-responsive products-table-responsive">
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Localização</th>
+                <th>Custo</th>
+                <th>Estoque</th>
+                <th>Status</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-produtos"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+    <div id="modal-produto" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Novo Produto</h3>
+          <button id="btn-fechar-modal" class="btn-close">&times;</button>
+        </div>
+        <form id="form-produto">
+          <div class="form-group"><label>Nome completo</label><input id="nome" required /></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Código interno / barras</label><input id="codigo_interno" required />
+            </div>
+            <div class="form-group">
+              <label>Categoria</label
+              ><select id="categoria" required>
+                <option value="">Selecione...</option>
+                <option value="VEICULO">Bicicletas / Patinetes</option>
+                <option value="PECA_ESTRUTURAL">Peça estrutural</option>
+                <option value="COMPONENTE_ELETRICO">Componente elétrico / Bateria</option>
+                <option value="PECA_SEGURANCA">Peça de segurança (freios/pneus)</option>
+                <option value="PECA_DESGASTE">Peça de desgaste</option>
+                <option value="ACESSORIO">Acessório</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Unidade de medida</label
+              ><select id="unidade_medida" required>
+                <option value="UN">Unidade</option>
+                <option value="CX">Caixa</option>
+                <option value="PAR">Par</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Custo (R$)</label
+              ><input id="custo" type="number" step="0.01" min="0" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fornecedor</label
+              ><select id="fornecedor_id" required></select>
+            </div>
+            <div class="form-group">
+              <label>Localização (prateleira/depósito)</label
+              ><input id="localizacao_deposito" required />
+            </div>
+            <div class="form-group">
+              <label>Estado</label
+              ><select id="estado_montagem">
+                <option value="MONTADO">Montado</option>
+                <option value="DESMONTADO">Desmontado</option>
+                <option value="NAO_APLICA">Não se aplica</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Tipo de rastreabilidade</label
+            ><select id="tipo_rastreabilidade">
+              <option value="NENHUMA">Nenhuma</option>
+              <option value="BATERIA">Bateria — série + validade</option>
+              <option value="MOTOR_CONTROLADOR">Motor/controlador — série + lote</option>
+              <option value="VEICULO">Veículo — ID único</option>
+              <option value="PECA_SEGURANCA">Freio/pneu — lote</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Demanda prevista no período</label
+            ><input id="demanda_prevista" type="number" min="0" value="0" />
+          </div>
+          <div class="form-group">
+            <label>Dimensões (obrigatórias para peças grandes)</label><input id="dimensoes" />
+          </div>
+          <button>Salvar Produto</button>
+        </form>
+      </div>
+    </div>
+    <div id="modal-editar-produto" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Editar Produto</h3>
+          <button id="btn-fechar-edicao" class="btn-close" type="button">&times;</button>
+        </div>
+        <form id="form-editar-produto">
+          <div class="form-group">
+            <label for="editar-nome">Nome</label><input id="editar-nome" required />
+          </div>
+          <div class="form-group">
+            <label for="editar-categoria">Categoria</label
+            ><select id="editar-categoria" required>
+              <option value="VEICULO">Bicicletas / Patinetes</option>
+              <option value="PECA_ESTRUTURAL">Peça estrutural</option>
+              <option value="COMPONENTE_ELETRICO">Componente elétrico / Bateria</option>
+              <option value="PECA_SEGURANCA">Peça de segurança (freios/pneus)</option>
+              <option value="PECA_DESGASTE">Peça de desgaste</option>
+              <option value="ACESSORIO">Acessório</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editar-localizacao">Localização</label
+            ><input id="editar-localizacao" required />
+          </div>
+          <div class="form-group">
+            <label for="editar-custo">Custo (R$)</label
+            ><input id="editar-custo" type="number" step="0.01" min="0" required />
+          </div>
+          <button type="submit">Salvar alterações</button>
+        </form>
+      </div>
+    </div>
+    <script type="module" src="./js/views/produto.js"></script>
+    <script type="module">
+      import { inicializarNavegacao } from './js/utilitarios/navigation.js';
+      inicializarNavegacao();
+    </script>
+  </body>
+</html>

@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node --no-warnings back-end/src/server.js",
     "dev": "node --no-warnings --watch back-end/src/server.js",
-    "test": "set NODE_ENV=test&& node --test back-end/tests/api.test.js"
+    "test": "set NODE_ENV=test&& node --test back-end/tests/api.test.js",
+    "format": "prettier --write front-end",
+    "format:check": "prettier --check front-end"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -20,5 +22,8 @@
     "mysql2": "^3.23.3",
     "sqlite3": "^6.0.1",
     "supertest": "^7.1.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
   }
 }

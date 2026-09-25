@@ -1,63 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BikeCity - Dashboard</title>
-    <link rel="stylesheet" href="./ativos/css/style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="./ativos/css/style.css" />
+  </head>
+  <body>
     <div class="wrapper">
-        <nav class="sidebar">
-    <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="8" cy="23" r="5"></circle><circle cx="24" cy="23" r="5"></circle><path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span>
-        <span class="brand-name">Bike<span>City</span></span>
-    </a>
-    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false"><span></span></button>
-    <ul class="sidebar-nav">
-        <li><a href="dashboard.html" class="NAV_DASH">Dashboard</a></li>
-        <li><a href="produtos.html">Produtos</a></li>
-        <li><a href="estoque.html">Estoque</a></li>
-        <li><a href="relatorios.html">Relatórios</a></li>
-        <li><a href="usuarios.html">Usuários</a></li>
-    </ul>
-</nav>
-        <main class="content">
-            <header class="content-header">
-                <div><h1>Painel de Controle</h1><p class="subtitle">Visão geral do estoque e da operação.</p></div>
-                <div><span id="nome-usuario" style="font-weight: 700;"></span><button id="btn-logout" class="btn-danger">Sair</button></div>
-            </header>
-            <div class="cards-grid">
-                <div class="card dashboard-card" id="card-total-produtos" role="button" tabindex="0" aria-label="Ver todos os produtos">
-                    <h3>Total de Produtos</h3>
-                    <p id="total-produtos">-</p>
-                </div>
-                <div class="card dashboard-card dashboard-card-alerta" id="card-estoque-critico" role="button" tabindex="0" aria-label="Ver produtos em alerta de estoque">
-                    <h3>Itens em Alerta (Baixo)</h3>
-                    <p id="estoque-critico" style="color: #dc2626;">-</p>
-                </div>
-                <div class="card dashboard-card" id="card-valor-estoque" role="button" tabindex="0" aria-label="Ver relatório das peças em estoque">
-                    <h3>Valor Total em Estoque</h3>
-                    <p id="valor-estoque">-</p>
-                </div>
-            </div>
-        </main>
+      <nav class="sidebar">
+        <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 32 32">
+              <circle cx="8" cy="23" r="5"></circle>
+              <circle cx="24" cy="23" r="5"></circle>
+              <path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg
+          ></span>
+          <span class="brand-name">Bike<span>City</span></span>
+        </a>
+        <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false">
+          <span></span>
+        </button>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html" class="NAV_DASH">Dashboard</a></li>
+          <li><a href="produtos.html">Produtos</a></li>
+          <li><a href="estoque.html">Estoque</a></li>
+          <li><a href="relatorios.html">Relatórios</a></li>
+          <li><a href="usuarios.html">Usuários</a></li>
+        </ul>
+      </nav>
+      <main class="content">
+        <header class="content-header">
+          <div>
+            <h1>Painel de Controle</h1>
+            <p class="subtitle">Visão geral do estoque e da operação.</p>
+          </div>
+          <div>
+            <span id="nome-usuario" class="user-email"></span
+            ><button id="btn-logout" class="btn-danger">Sair</button>
+          </div>
+        </header>
+        <div class="cards-grid">
+          <div
+            class="card dashboard-card"
+            id="card-total-produtos"
+            role="button"
+            tabindex="0"
+            aria-label="Ver todos os produtos"
+          >
+            <h3>Total de Produtos</h3>
+            <p id="total-produtos">-</p>
+          </div>
+          <div
+            class="card dashboard-card dashboard-card-alerta"
+            id="card-estoque-critico"
+            role="button"
+            tabindex="0"
+            aria-label="Ver produtos em alerta de estoque"
+          >
+            <h3>Itens em Alerta (Baixo)</h3>
+            <p id="estoque-critico" class="dashboard-critical">-</p>
+          </div>
+          <div
+            class="card dashboard-card"
+            id="card-valor-estoque"
+            role="button"
+            tabindex="0"
+            aria-label="Ver relatório das peças em estoque"
+          >
+            <h3>Valor Total em Estoque</h3>
+            <p id="valor-estoque">-</p>
+          </div>
+        </div>
+      </main>
     </div>
     <div id="modal-dashboard-produtos" class="modal-overlay" aria-hidden="true">
-        <div class="modal-card dashboard-modal">
-            <div class="modal-header">
-                <h3 id="titulo-produtos-dashboard">Produtos</h3>
-                <button id="btn-fechar-dashboard-produtos" class="btn-close" type="button" aria-label="Fechar">&times;</button>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead id="thead-dashboard-produtos"><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Localização</th></tr></thead>
-                    <tbody id="tbody-dashboard-produtos"></tbody>
-                </table>
-            </div>
+      <div class="modal-card dashboard-modal">
+        <div class="modal-header">
+          <h3 id="titulo-produtos-dashboard">Produtos</h3>
+          <button
+            id="btn-fechar-dashboard-produtos"
+            class="btn-close"
+            type="button"
+            aria-label="Fechar"
+          >
+            &times;
+          </button>
         </div>
+        <div class="table-responsive">
+          <table>
+            <thead id="thead-dashboard-produtos">
+              <tr>
+                <th>Produto</th>
+                <th>Categoria</th>
+                <th>Estoque</th>
+                <th>Localização</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-dashboard-produtos"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <script type="module">import { inicializarNavegacao } from "./js/utilitarios/navigation.js"; inicializarNavegacao();</script>
+    <script type="module">
+      import { inicializarNavegacao } from './js/utilitarios/navigation.js';
+      inicializarNavegacao();
+    </script>
     <script type="module" src="./js/views/dashboard.js"></script>
-</body>
+  </body>
 </html>
