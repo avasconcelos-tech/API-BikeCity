@@ -68,6 +68,11 @@ function inativarProduto(id) {
   return buscarProdutoPorId(id);
 }
 
+function reativarProduto(id) {
+  db.prepare('UPDATE produtos SET ativo = 1 WHERE id = ?').run(Number(id));
+  return buscarProdutoPorId(id);
+}
+
 function atualizarEstoqueProduto(id, novoEstoque) {
   db.prepare('UPDATE produtos SET estoque_atual = ? WHERE id = ?').run(novoEstoque, Number(id));
   return buscarProdutoPorId(id);
@@ -79,5 +84,6 @@ module.exports = {
   buscarProdutoPorId,
   atualizarProduto,
   inativarProduto,
+  reativarProduto,
   atualizarEstoqueProduto
 };
