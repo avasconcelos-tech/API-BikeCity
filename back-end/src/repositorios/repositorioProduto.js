@@ -24,7 +24,7 @@ function criarProduto(produtoInput) {
     produtoInput.custo ?? 0,
     produtoInput.dimensoes ?? null,
     produtoInput.estoque_atual ?? 0,
-    produtoInput.estoque_minimo ?? 0,
+    produtoInput.estoque_minimo ?? 5,
     produtoInput.estado_montagem ?? 'NAO_APLICA',
     produtoInput.ativo === undefined ? 1 : Number(Boolean(produtoInput.ativo)),
     produtoInput.tipo_rastreabilidade ?? 'NENHUMA',
@@ -46,7 +46,7 @@ function atualizarProduto(id, dadosParaAtualizar) {
   const campos = [];
   const valores = [];
 
-  const camposPermitidos = ['nome', 'codigo_interno', 'categoria', 'unidade_medida', 'localizacao_deposito', 'fornecedor_id', 'custo', 'dimensoes', 'estado_montagem', 'imagem_url', 'tipo_rastreabilidade', 'demanda_prevista'];
+  const camposPermitidos = ['nome', 'codigo_interno', 'categoria', 'unidade_medida', 'localizacao_deposito', 'fornecedor_id', 'custo', 'dimensoes', 'estoque_minimo', 'estado_montagem', 'imagem_url', 'tipo_rastreabilidade', 'demanda_prevista'];
   for (const campo of camposPermitidos) {
     if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, campo)) {
       campos.push(`${campo} = ?`);

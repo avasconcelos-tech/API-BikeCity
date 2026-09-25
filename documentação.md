@@ -677,7 +677,7 @@ GET /api/v1/produtos?incluirInativos=true
 * O produto sempre inicia com `estoque_atual = 0`.
 * O estoque é alterado via movimentações.
 * Se `fornecedor_id` for informado, o sistema valida se ele existe no banco.
-* Se `estoque_minimo` não for fornecido, assume o valor padrão de `5`.
+* Se `estoque_minimo` não for fornecido, assume o valor padrão de `5`. Os alertas e o resumo usam o limite configurado em cada produto.
 
 ### Body da Requisição
 
