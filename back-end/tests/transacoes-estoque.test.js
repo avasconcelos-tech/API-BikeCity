@@ -9,21 +9,21 @@ const servicoEstoque = require('../src/servicos/servicoEstoque');
 
 test.beforeEach(() => conexaoBanco.resetarBancoParaTestes());
 
-test('ajuste manual desfaz saldo e histórico quando a auditoria falha', () => {
+test('ajuste manual desfaz saldo e histórico quando a movimentação falha', () => {
   const db = conexaoBanco.getDb();
   const estoqueInicial = db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual;
-  const adicionarAuditoriaOriginal = repositorioEstoque.adicionarAuditoria;
-  repositorioEstoque.adicionarAuditoria = () => {
-    throw new Error('falha simulada na auditoria');
+  const adicionarMovimentacaoOriginal = repositorioEstoque.adicionarMovimentacao;
+  repositorioEstoque.adicionarMovimentacao = () => {
+    throw new Error('falha simulada na movimentação');
   };
 
   try {
     assert.throws(
       () => servicoEstoque.registrarAjusteManual(2, estoqueInicial + 10, 'Correção', 1),
-      /falha simulada/
+      /falha simulada na movimentação/
     );
   } finally {
-    repositorioEstoque.adicionarAuditoria = adicionarAuditoriaOriginal;
+    repositorioEstoque.adicionarMovimentacao = adicionarMovimentacaoOriginal;
   }
 
   assert.equal(db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual, estoqueInicial);
@@ -59,4 +59,28 @@ test('devolução desfaz registro e saldo quando a movimentação falha', () => 
   assert.equal(db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual, estoqueInicial);
   assert.equal(db.prepare('SELECT COUNT(*) AS total FROM devolucoes WHERE produto_id = 2').get().total, 0);
   assert.equal(db.prepare("SELECT COUNT(*) AS total FROM movimentacoes WHERE produto_id = 2 AND tipo = 'DEVOLUCAO'").get().total, 0);
+});
+
+test('histórico usa somente movimentações e preserva eventos com a mesma chave', () => {
+  const data = '2026-01-01T10:00:00.000Z';
+  repositorioEstoque.adicionarMovimentacao({
+    produto_id: 2, usuario_id: 1, tipo: 'AJUSTE_MANUAL', quantidade: 1,
+    data_movimentacao: data, motivo: 'Correção', estoque_anterior: 10, estoque_novo: 11
+  });
+  repositorioEstoque.adicionarMovimentacao({
+    produto_id: 2, usuario_id: 1, tipo: 'AJUSTE_MANUAL', quantidade: 1,
+    data_movimentacao: data, motivo: 'Correção', estoque_anterior: 10, estoque_novo: 11
+  });
+  repositorioEstoque.adicionarAuditoria({
+    produto_id: 2, usuario_id: 1, acao: 'AJUSTE_MANUAL',
+    antigo_valor: 10, novo_valor: 11, justificativa: 'Correção', data
+  });
+
+  const movimentacoes = repositorioEstoque.listarMovimentacoes(2);
+  assert.equal(movimentacoes.length, 2);
+  assert.ok(movimentacoes.every((movimentacao) => Number.isInteger(movimentacao.id)));
+  assert.deepEqual(
+    movimentacoes.map((movimentacao) => movimentacao.id),
+    movimentacoes.map((movimentacao) => movimentacao.id).sort((a, b) => b - a)
+  );
 });

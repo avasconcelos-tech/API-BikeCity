@@ -6,32 +6,8 @@ function listarMovimentacoes(produtoId = null) {
   let query = `SELECT m.*, p.nome AS produto_nome, u.nome AS usuario_nome
     FROM movimentacoes m LEFT JOIN produtos p ON p.id=m.produto_id LEFT JOIN usuarios u ON u.id=m.usuario_id`;
   if (produtoId !== null && produtoId !== undefined) { query += ' WHERE m.produto_id = ?'; params.push(Number(produtoId)); }
-  query += ' ORDER BY m.id DESC';
-  const movimentacoes = db.prepare(query).all(...params);
-  const ajustes = db.prepare(`SELECT a.*, p.nome AS produto_nome, u.nome AS usuario_nome
-    FROM auditoria a LEFT JOIN produtos p ON p.id=a.produto_id LEFT JOIN usuarios u ON u.id=a.usuario_id
-    WHERE a.acao = 'AJUSTE_MANUAL'${produtoId !== null && produtoId !== undefined ? ' AND a.produto_id = ?' : ''}`)
-    .all(...(produtoId !== null && produtoId !== undefined ? [Number(produtoId)] : []));
-  const idsDeAjustes = new Set(movimentacoes.filter(m => m.tipo === 'AJUSTE_MANUAL').map(m => `${m.produto_id}|${m.data_movimentacao}|${m.estoque_anterior}|${m.estoque_novo}`));
-  for (const ajuste of ajustes) {
-    const chave = `${ajuste.produto_id}|${ajuste.data}|${ajuste.antigo_valor}|${ajuste.novo_valor}`;
-    if (idsDeAjustes.has(chave)) continue;
-    movimentacoes.push({
-      id: `auditoria-${ajuste.id}`,
-      produto_id: ajuste.produto_id,
-      usuario_id: ajuste.usuario_id,
-      tipo: 'AJUSTE_MANUAL',
-      quantidade: Number(ajuste.novo_valor) - Number(ajuste.antigo_valor),
-      data_movimentacao: ajuste.data,
-      motivo: ajuste.justificativa,
-      observacao: `Estoque anterior: ${ajuste.antigo_valor}; novo estoque: ${ajuste.novo_valor}`,
-      estoque_anterior: Number(ajuste.antigo_valor),
-      estoque_novo: Number(ajuste.novo_valor),
-      produto_nome: ajuste.produto_nome,
-      usuario_nome: ajuste.usuario_nome
-    });
-  }
-  return movimentacoes.sort((a, b) => new Date(b.data_movimentacao).getTime() - new Date(a.data_movimentacao).getTime());
+  query += ' ORDER BY m.data_movimentacao DESC, m.id DESC';
+  return db.prepare(query).all(...params);
 }
 function adicionarMovimentacao(m) {
   const r = db.prepare(`INSERT INTO movimentacoes
