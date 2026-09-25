@@ -1,6 +1,6 @@
 import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
 import { apiFetch } from '../api/client.js';
-import { getProdutos } from '../api/services.js';
+import { getAlertas, getNotificacoes, getProdutos, marcarAlertaLido } from '../api/services.js';
 import { formatarMoeda } from '../utilitarios/formatters.js';
 import { configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
 
@@ -57,12 +57,65 @@ function ativarCard(id, acao) {
   };
 }
 
+function escapeHtml(valor) {
+  return String(valor ?? '-').replace(
+    /[&<>"']/g,
+    (caractere) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[caractere],
+  );
+}
+
+function renderizarAlertas(alertas, notificacoes) {
+  const lista = $('lista-alertas-dashboard');
+  const itens = [
+    ...alertas.map((alerta) => ({
+      id: alerta.id,
+      tipo: 'alerta',
+      titulo: alerta.produto_nome || 'Alerta de estoque',
+      mensagem: alerta.mensagem,
+      lido: alerta.lido,
+    })),
+    ...notificacoes.map((notificacao) => ({
+      tipo: 'notificacao',
+      titulo: notificacao.titulo,
+      mensagem: notificacao.mensagem,
+      lido: notificacao.lida,
+    })),
+  ];
+  const pendentes = itens.filter((item) => !item.lido).length;
+  $('contador-alertas-dashboard').textContent =
+    `${pendentes} pendente${pendentes === 1 ? '' : 's'}`;
+  lista.innerHTML =
+    itens
+      .map(
+        (item) =>
+          `<article class="notification-item ${item.lido ? 'is-read' : ''}"><div><strong>${escapeHtml(item.titulo)}</strong><p>${escapeHtml(item.mensagem)}</p></div>${item.tipo === 'alerta' && !item.lido ? `<button type="button" class="btn-marcar-alerta" data-id="${item.id}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`,
+      )
+      .join('') || '<p>Nenhuma notificação registrada.</p>';
+  lista.querySelectorAll('.btn-marcar-alerta').forEach((botao) =>
+    botao.addEventListener('click', async () => {
+      botao.disabled = true;
+      try {
+        await marcarAlertaLido(botao.dataset.id);
+        const alerta = alertas.find((item) => String(item.id) === botao.dataset.id);
+        if (alerta) alerta.lido = true;
+        renderizarAlertas(alertas, notificacoes);
+      } catch (erro) {
+        botao.disabled = false;
+        console.error('Não foi possível marcar o alerta:', erro);
+      }
+    }),
+  );
+}
+
 async function carregar() {
   const usuario = obterUsuarioLogado();
   try {
-    const [resumo, respostaProdutos] = await Promise.all([
+    const [resumo, respostaProdutos, respostaAlertas, respostaNotificacoes] = await Promise.all([
       apiFetch('/api/v1/dashboard/resumo'),
       getProdutos(),
+      getAlertas(),
+      getNotificacoes(),
     ]);
     produtos = respostaProdutos.dados || [];
     const dados = resumo.dados;
@@ -71,6 +124,7 @@ async function carregar() {
     $('total-produtos').textContent = dados.total_produtos || 0;
     $('estoque-critico').textContent = dados.estoque_critico || 0;
     $('valor-estoque').textContent = formatarMoeda(dados.valor_total_estoque || 0);
+    renderizarAlertas(respostaAlertas.dados || [], respostaNotificacoes.dados || []);
 
     ativarCard('card-total-produtos', () => abrirProdutos('Todos os produtos', produtos));
     ativarCard('card-estoque-critico', () =>

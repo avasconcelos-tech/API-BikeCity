@@ -21,8 +21,14 @@ function criarFornecedor(req, res) {
   return res.status(result.statusCode).json(result.payload);
 }
 
+function atualizarFornecedor(req, res) {
+  const result = servicoFornecedor.atualizarFornecedor(req.params.id, req.body);
+  return res.status(result.statusCode).json(result.payload);
+}
+
 module.exports = {
   listarFornecedores,
   buscarFornecedorPorId,
-  criarFornecedor
+  criarFornecedor,
+  atualizarFornecedor
 };

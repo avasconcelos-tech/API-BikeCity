@@ -7,5 +7,6 @@ const router = express.Router();
 router.get('/', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorFornecedor.listarFornecedores);
 router.get('/:id', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorFornecedor.buscarFornecedorPorId);
 router.post('/', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorFornecedor.criarFornecedor);
+router.put('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorFornecedor.atualizarFornecedor);
 
 module.exports = router;

@@ -355,3 +355,26 @@ $('btn-buscar-codigo')?.addEventListener('click', async () => {
     $('resultado-codigo').textContent = e.message;
   }
 });
+$('btn-buscar-rastreabilidade')?.addEventListener('click', async () => {
+  const termo = $('busca-rastreabilidade').value.trim().toLowerCase();
+  if (!termo) return;
+  try {
+    const resposta = await getRastreabilidade();
+    const resultados = (resposta.dados || []).filter((item) =>
+      [item.numero_serie, item.lote, item.identificador_unico].some((valor) =>
+        String(valor || '')
+          .toLowerCase()
+          .includes(termo),
+      ),
+    );
+    $('resultado-rastreabilidade').innerHTML =
+      resultados
+        .map(
+          (item) =>
+            `<div class="card trace-result"><strong>${item.produto_nome || `Produto ${item.produto_id}`}</strong><br>Identificador: ${item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`}<br>Status: ${item.status}<br>Localização: ${item.localizacao || '-'}<br>Validade: ${item.data_validade ? formatarData(item.data_validade) : '-'}</div>`,
+        )
+        .join('') || '<p>Nenhum item rastreável encontrado.</p>';
+  } catch (erro) {
+    mostrarToast(erro.message || 'Não foi possível consultar a rastreabilidade.', 'erro');
+  }
+});

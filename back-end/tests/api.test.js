@@ -343,6 +343,14 @@ test('fornecedor é criado e consultado com validação de produto', async () =>
   assert.equal(detalhe.status, 200);
   assert.equal(detalhe.body.dados.nome, 'ACME Ltda');
 
+  const atualizacaoFornecedor = await request(app)
+    .put(`/api/v1/fornecedores/${cadastroFornecedor.body.dados.id}`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'ACME Mobility', cnpj: '12.345.678/0001-90', contato: 'João' });
+
+  assert.equal(atualizacaoFornecedor.status, 200);
+  assert.equal(atualizacaoFornecedor.body.dados.nome, 'ACME Mobility');
+
   const produtoInvalido = await request(app)
     .post('/api/v1/produtos')
     .set('Authorization', `Bearer ${token}`)

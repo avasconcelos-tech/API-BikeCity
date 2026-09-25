@@ -33,8 +33,17 @@ function criarFornecedor(data) {
   };
 }
 
+function atualizarFornecedor(id, data) {
+  const nome = data?.nome;
+  if (!nome || String(nome).trim().length === 0) return { statusCode: 400, payload: { status: 'erro', mensagem: 'Nome do fornecedor é obrigatório' } };
+  const fornecedor = repositorio.atualizarFornecedor(id, { nome: String(nome).trim(), cnpj: data?.cnpj ?? null, contato: data?.contato ?? null });
+  if (!fornecedor) return { statusCode: 404, payload: { status: 'erro', mensagem: 'Fornecedor não encontrado' } };
+  return { statusCode: 200, payload: { status: 'sucesso', mensagem: 'Fornecedor atualizado com sucesso', dados: fornecedor } };
+}
+
 module.exports = {
   listarFornecedores,
   buscarFornecedorPorId,
-  criarFornecedor
+  criarFornecedor,
+  atualizarFornecedor
 };

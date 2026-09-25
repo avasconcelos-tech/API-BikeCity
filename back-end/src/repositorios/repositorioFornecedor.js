@@ -33,8 +33,15 @@ function criarFornecedor(dados) {
   };
 }
 
+function atualizarFornecedor(id, dados) {
+  const resultado = db.prepare('UPDATE fornecedores SET nome = ?, cnpj = ?, contato = ? WHERE id = ?').run(dados.nome, dados.cnpj ?? null, dados.contato ?? null, Number(id));
+  if (!resultado.changes) return null;
+  return buscarFornecedorPorId(id);
+}
+
 module.exports = {
   listarFornecedores,
   buscarFornecedorPorId,
-  criarFornecedor
+  criarFornecedor,
+  atualizarFornecedor
 };

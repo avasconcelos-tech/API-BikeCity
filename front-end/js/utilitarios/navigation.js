@@ -4,6 +4,7 @@ const paginas = [
   ['dashboard.html', 'Dashboard'],
   ['produtos.html', 'Produtos'],
   ['estoque.html', 'Estoque'],
+  ['fornecedores.html', 'Fornecedores'],
   ['relatorios.html', 'Relatórios'],
   ['usuarios.html', 'Usuários'],
 ];

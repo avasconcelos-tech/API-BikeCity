@@ -47,8 +47,14 @@ export function postAjuste(dados) {
     body: JSON.stringify(dados),
   });
 }
-export function getFornecedores() {
-  return apiFetch('/api/v1/fornecedores');
+export function getFornecedores(incluirInativos = false) {
+  return apiFetch(`/api/v1/fornecedores${incluirInativos ? '?incluirInativos=true' : ''}`);
+}
+export function postFornecedor(dados) {
+  return apiFetch('/api/v1/fornecedores', { method: 'POST', body: JSON.stringify(dados) });
+}
+export function putFornecedor(id, dados) {
+  return apiFetch(`/api/v1/fornecedores/${id}`, { method: 'PUT', body: JSON.stringify(dados) });
 }
 export function getUsuarios(incluirInativos = false) {
   return apiFetch(`/api/v1/usuarios${incluirInativos ? '?incluirInativos=true' : ''}`);
@@ -80,4 +86,10 @@ export function getNotificacoes(setor = '') {
   return apiFetch(
     `/api/v1/estoque/notificacoes${setor ? `?setor=${encodeURIComponent(setor)}` : ''}`,
   );
+}
+export function getAlertas() {
+  return apiFetch('/api/v1/estoque/alertas');
+}
+export function marcarAlertaLido(id) {
+  return apiFetch(`/api/v1/estoque/alertas/${id}/lido`, { method: 'PATCH' });
 }
