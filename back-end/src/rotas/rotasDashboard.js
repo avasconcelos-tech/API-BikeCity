@@ -1,16 +1,14 @@
 const express = require('express');
-const controladorUpload = require('../controladores/controladorUpload');
+const controladorEstoque = require('../controladores/controladorEstoque');
 const { validarAutenticacao, autorizarPerfil } = require('../servicos/servicoAutenticacao');
-const processarUploadImagem = require('../middlewares/processarUploadImagem');
 
 const router = express.Router();
 
-router.post(
-  '/imagens',
+router.get(
+  '/resumo',
   validarAutenticacao,
   autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'),
-  processarUploadImagem,
-  controladorUpload.vincularImagemProduto,
+  controladorEstoque.resumo,
 );
 
 module.exports = router;

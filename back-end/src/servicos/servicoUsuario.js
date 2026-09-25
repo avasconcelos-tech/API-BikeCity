@@ -27,7 +27,8 @@ function validarUsuario(dados, { parcial = false } = {}) {
     const valor = dados[campo];
 
     if (campo === 'nome') {
-      if (typeof valor !== 'string' || !valor.trim()) return { erro: 'O nome é obrigatório e deve ser um texto.' };
+      if (typeof valor !== 'string' || !valor.trim())
+        return { erro: 'O nome é obrigatório e deve ser um texto.' };
       resultado.nome = valor.trim();
     } else if (campo === 'email') {
       if (typeof valor !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim())) {
@@ -35,7 +36,8 @@ function validarUsuario(dados, { parcial = false } = {}) {
       }
       resultado.email = valor.trim().toLowerCase();
     } else if (campo === 'cargo') {
-      if (valor !== null && typeof valor !== 'string') return { erro: 'O cargo deve ser um texto.' };
+      if (valor !== null && typeof valor !== 'string')
+        return { erro: 'O cargo deve ser um texto.' };
       resultado.cargo = typeof valor === 'string' ? valor.trim() : null;
     } else {
       if (typeof valor !== 'string' || !PERFIS_VALIDOS.includes(valor.trim().toUpperCase())) {
@@ -61,7 +63,8 @@ function listarUsuarios(incluirInativos = false) {
 }
 
 function buscarUsuarioPorId(id) {
-  if (!Number.isInteger(Number(id)) || Number(id) < 1) throw new ErroNegocio(404, 'Usuário não encontrado');
+  if (!Number.isInteger(Number(id)) || Number(id) < 1)
+    throw new ErroNegocio(404, 'Usuário não encontrado');
   const usuario = repositorio.buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
   return usuario;
@@ -90,7 +93,8 @@ function atualizarUsuario(id, dadosParaAtualizar) {
 function desativarUsuario(id, solicitanteId) {
   const usuario = buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
-  if (usuario.id === Number(solicitanteId)) throw new ErroNegocio(400, 'Não é permitido desativar a própria conta.');
+  if (usuario.id === Number(solicitanteId))
+    throw new ErroNegocio(400, 'Não é permitido desativar a própria conta.');
 
   const resultado = repositorio.desativarUsuario(id);
   if (resultado.ultimoGerenteProtegido) {
@@ -123,7 +127,8 @@ function trocarSenha(id, senhaAtual, novaSenha) {
 
   const usuario = buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
-  if (!bcrypt.compareSync(senhaAtual, usuario.senha_hash)) throw new ErroNegocio(400, 'Senha atual incorreta');
+  if (!bcrypt.compareSync(senhaAtual, usuario.senha_hash))
+    throw new ErroNegocio(400, 'Senha atual incorreta');
 
   return salvarNovaSenha(id, novaSenha);
 }
@@ -138,7 +143,8 @@ function redefinirSenha(id, novaSenha, solicitanteId) {
 function criarUsuario(data) {
   const validacao = validarUsuario(data);
   if (validacao.erro) throw new ErroNegocio(400, validacao.erro);
-  if (!validarSenha(data.senha)) throw new ErroNegocio(400, 'A senha deve ter pelo menos 6 caracteres.');
+  if (!validarSenha(data.senha))
+    throw new ErroNegocio(400, 'A senha deve ter pelo menos 6 caracteres.');
 
   const existe = repositorio.buscarUsuarioPorEmail(validacao.dados.email);
   if (existe) throw new ErroNegocio(409, 'E-mail já cadastrado');
@@ -156,5 +162,5 @@ module.exports = {
   reativarUsuario,
   trocarSenha,
   redefinirSenha,
-  criarUsuario
+  criarUsuario,
 };

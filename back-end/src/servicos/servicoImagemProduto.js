@@ -74,7 +74,7 @@ async function vincularImagem(produtoId, arquivo) {
     return {
       produto_id: Number(produto.id),
       nomeArquivo: arquivo.filename,
-      caminho: caminhoImagem
+      caminho: caminhoImagem,
     };
   } catch (erro) {
     await removerArquivo(arquivo.path).catch(() => {});

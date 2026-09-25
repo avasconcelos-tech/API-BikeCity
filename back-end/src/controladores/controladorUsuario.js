@@ -22,17 +22,23 @@ function atualizarUsuario(req, res) {
   }
 
   const usuario = servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário atualizado com sucesso', dados: usuario });
+  return res
+    .status(200)
+    .json({ status: 'sucesso', mensagem: 'Usuário atualizado com sucesso', dados: usuario });
 }
 
 function desativarUsuario(req, res) {
   const usuario = servicoUsuario.desativarUsuario(req.params.id, req.user.id);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: usuario });
+  return res
+    .status(200)
+    .json({ status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: usuario });
 }
 
 function reativarUsuario(req, res) {
   const usuario = servicoUsuario.reativarUsuario(req.params.id);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: usuario });
+  return res
+    .status(200)
+    .json({ status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: usuario });
 }
 
 function trocarSenha(req, res) {
@@ -48,7 +54,9 @@ function redefinirSenha(req, res) {
 
 function criarUsuario(req, res) {
   const dados = servicoUsuario.criarUsuario(req.body);
-  return res.status(201).json({ status: 'sucesso', mensagem: 'Usuário cadastrado com sucesso', dados });
+  return res
+    .status(201)
+    .json({ status: 'sucesso', mensagem: 'Usuário cadastrado com sucesso', dados });
 }
 
 module.exports = {
@@ -59,5 +67,5 @@ module.exports = {
   reativarUsuario,
   trocarSenha,
   redefinirSenha,
-  criarUsuario
+  criarUsuario,
 };

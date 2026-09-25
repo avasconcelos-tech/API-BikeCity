@@ -13,17 +13,23 @@ function buscarFornecedorPorId(req, res) {
 
 function criarFornecedor(req, res) {
   const fornecedor = servicoFornecedor.criarFornecedor(req.body);
-  return res.status(201).json({ status: 'sucesso', mensagem: 'Fornecedor cadastrado com sucesso', dados: fornecedor });
+  return res
+    .status(201)
+    .json({ status: 'sucesso', mensagem: 'Fornecedor cadastrado com sucesso', dados: fornecedor });
 }
 
 function atualizarFornecedor(req, res) {
   const fornecedor = servicoFornecedor.atualizarFornecedor(req.params.id, req.body);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Fornecedor atualizado com sucesso', dados: fornecedor });
+  return res
+    .status(200)
+    .json({ status: 'sucesso', mensagem: 'Fornecedor atualizado com sucesso', dados: fornecedor });
 }
 
 function inativarFornecedor(req, res) {
   const fornecedor = servicoFornecedor.inativarFornecedor(req.params.id);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Fornecedor inativado com sucesso', dados: fornecedor });
+  return res
+    .status(200)
+    .json({ status: 'sucesso', mensagem: 'Fornecedor inativado com sucesso', dados: fornecedor });
 }
 
 module.exports = {
@@ -31,5 +37,5 @@ module.exports = {
   buscarFornecedorPorId,
   criarFornecedor,
   atualizarFornecedor,
-  inativarFornecedor
+  inativarFornecedor,
 };

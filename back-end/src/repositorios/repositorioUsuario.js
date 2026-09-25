@@ -4,15 +4,20 @@ const bcrypt = require('bcryptjs');
 const db = conexaoBanco.obterBanco();
 
 function listarUsuarios(incluirInativos = false) {
-  const query = incluirInativos ? 'SELECT * FROM usuarios ORDER BY id' : 'SELECT * FROM usuarios WHERE ativo = 1 ORDER BY id';
-  return db.prepare(query).all().map((usuario) => ({
-    id: usuario.id,
-    nome: usuario.nome,
-    email: usuario.email,
-    cargo: usuario.cargo,
-    perfil: usuario.perfil,
-    ativo: Boolean(usuario.ativo)
-  }));
+  const query = incluirInativos
+    ? 'SELECT * FROM usuarios ORDER BY id'
+    : 'SELECT * FROM usuarios WHERE ativo = 1 ORDER BY id';
+  return db
+    .prepare(query)
+    .all()
+    .map((usuario) => ({
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      cargo: usuario.cargo,
+      perfil: usuario.perfil,
+      ativo: Boolean(usuario.ativo),
+    }));
 }
 
 function buscarUsuarioPorId(id) {
@@ -21,7 +26,7 @@ function buscarUsuarioPorId(id) {
   return {
     ...usuario,
     ativo: Boolean(usuario.ativo),
-    bloqueado_until: usuario.bloqueado_until ? new Date(usuario.bloqueado_until) : null
+    bloqueado_until: usuario.bloqueado_until ? new Date(usuario.bloqueado_until) : null,
   };
 }
 
@@ -31,12 +36,16 @@ function buscarUsuarioPorEmail(email) {
   return {
     ...usuario,
     ativo: Boolean(usuario.ativo),
-    bloqueado_until: usuario.bloqueado_until ? new Date(usuario.bloqueado_until) : null
+    bloqueado_until: usuario.bloqueado_until ? new Date(usuario.bloqueado_until) : null,
   };
 }
 
 function atualizarStatusLogin(email, tentativasFalhas, bloqueadoUntil) {
-  db.prepare('UPDATE usuarios SET tentativas_falhas = ?, bloqueado_until = ? WHERE email = ?').run(tentativasFalhas, bloqueadoUntil, email);
+  db.prepare('UPDATE usuarios SET tentativas_falhas = ?, bloqueado_until = ? WHERE email = ?').run(
+    tentativasFalhas,
+    bloqueadoUntil,
+    email,
+  );
   return buscarUsuarioPorEmail(email);
 }
 
@@ -49,7 +58,9 @@ function atualizarUsuario(id, dadosParaAtualizar) {
       dadosParaAtualizar.perfil &&
       dadosParaAtualizar.perfil !== 'GERENTE'
     ) {
-      const { total } = db.prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?').get('GERENTE');
+      const { total } = db
+        .prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?')
+        .get('GERENTE');
       if (total <= 1) return { ultimoGerenteProtegido: true };
     }
 
@@ -74,7 +85,9 @@ function desativarUsuario(id) {
   return conexaoBanco.executarEmTransacao(() => {
     const usuario = buscarUsuarioPorId(id);
     if (usuario?.ativo && usuario.perfil === 'GERENTE') {
-      const { total } = db.prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?').get('GERENTE');
+      const { total } = db
+        .prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?')
+        .get('GERENTE');
       if (total <= 1) return { ultimoGerenteProtegido: true };
     }
     db.prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?').run(Number(id));
@@ -88,15 +101,19 @@ function reativarUsuario(id) {
 }
 
 function atualizarSenha(id, novaSenhaHash) {
-  db.prepare('UPDATE usuarios SET senha_hash = ?, tentativas_falhas = 0, bloqueado_until = NULL WHERE id = ?').run(novaSenhaHash, Number(id));
+  db.prepare(
+    'UPDATE usuarios SET senha_hash = ?, tentativas_falhas = 0, bloqueado_until = NULL WHERE id = ?',
+  ).run(novaSenhaHash, Number(id));
   return buscarUsuarioPorId(id);
 }
 
 function criarUsuario({ nome, email, cargo, perfil, senha }) {
   const senhaHash = bcrypt.hashSync(senha, 10);
-  const resultado = db.prepare(
-    'INSERT INTO usuarios (nome, email, senha_hash, cargo, perfil, ativo, tentativas_falhas, bloqueado_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)' 
-  ).run(nome, email, senhaHash, cargo, perfil, 1, 0, null);
+  const resultado = db
+    .prepare(
+      'INSERT INTO usuarios (nome, email, senha_hash, cargo, perfil, ativo, tentativas_falhas, bloqueado_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    )
+    .run(nome, email, senhaHash, cargo, perfil, 1, 0, null);
 
   return {
     id: resultado.lastInsertRowid,
@@ -107,7 +124,7 @@ function criarUsuario({ nome, email, cargo, perfil, senha }) {
     perfil,
     ativo: true,
     tentativas_falhas: 0,
-    bloqueado_until: null
+    bloqueado_until: null,
   };
 }
 
@@ -120,5 +137,5 @@ module.exports = {
   desativarUsuario,
   reativarUsuario,
   atualizarSenha,
-  criarUsuario
+  criarUsuario,
 };

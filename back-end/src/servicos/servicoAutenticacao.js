@@ -25,7 +25,7 @@ function validarAutenticacao(req, res, next) {
       email: usuario.email,
       perfil: usuario.perfil,
       cargo: usuario.cargo,
-      ativo: usuario.ativo
+      ativo: usuario.ativo,
     };
     return next();
   } catch (error) {
@@ -43,7 +43,11 @@ function autorizarPerfil(...perfis) {
 }
 
 function criarToken(usuario) {
-  return jwt.sign({ id: usuario.id, nome: usuario.nome, perfil: usuario.perfil, email: usuario.email }, SECRET, { expiresIn: '30m' });
+  return jwt.sign(
+    { id: usuario.id, nome: usuario.nome, perfil: usuario.perfil, email: usuario.email },
+    SECRET,
+    { expiresIn: '30m' },
+  );
 }
 
 function realizarLogin(email, senha) {
@@ -87,5 +91,5 @@ function realizarLogin(email, senha) {
 module.exports = {
   validarAutenticacao,
   autorizarPerfil,
-  realizarLogin
+  realizarLogin,
 };

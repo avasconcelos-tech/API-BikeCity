@@ -116,7 +116,6 @@ function criarEstrutura() {
       criada_em TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
-
 }
 
 function executarMigracoes() {
@@ -127,20 +126,25 @@ function executarMigracoes() {
     nome TEXT NOT NULL,
     aplicado_em TEXT NOT NULL
   )`);
-  const migracoes = fs.readdirSync(diretorioMigracoes)
+  const migracoes = fs
+    .readdirSync(diretorioMigracoes)
     .filter((arquivo) => /^\d+_[a-z0-9_]+\.js$/.test(arquivo))
     .sort()
     .map((arquivo) => ({
       arquivo,
       versao: Number(arquivo.match(/^(\d+)_/)[1]),
-      migracao: require(path.join(diretorioMigracoes, arquivo))
+      migracao: require(path.join(diretorioMigracoes, arquivo)),
     }));
 
-  let versaoAtual = Number(db.prepare('SELECT COALESCE(MAX(versao), 0) AS versao FROM schema_versao').get().versao);
+  let versaoAtual = Number(
+    db.prepare('SELECT COALESCE(MAX(versao), 0) AS versao FROM schema_versao').get().versao,
+  );
   for (const { arquivo, versao, migracao } of migracoes) {
     if (versao <= versaoAtual) continue;
     if (versao !== versaoAtual + 1) {
-      throw new Error(`Sequência de migrações incompleta: esperado ${versaoAtual + 1}, encontrado ${versao} (${arquivo}).`);
+      throw new Error(
+        `Sequência de migrações incompleta: esperado ${versaoAtual + 1}, encontrado ${versao} (${arquivo}).`,
+      );
     }
     db.exec('BEGIN');
     try {
@@ -148,7 +152,7 @@ function executarMigracoes() {
       db.prepare('INSERT INTO schema_versao (versao, nome, aplicado_em) VALUES (?, ?, ?)').run(
         versao,
         arquivo,
-        new Date().toISOString()
+        new Date().toISOString(),
       );
       db.exec('COMMIT');
       versaoAtual = versao;
@@ -160,18 +164,54 @@ function executarMigracoes() {
 }
 
 function seedDadosIniciais() {
-  db.prepare(`INSERT OR IGNORE INTO usuarios (id,nome,email,senha_hash,cargo,perfil,ativo,tentativas_falhas,bloqueado_until)
-    VALUES (1,?,?,?,?,?,?,?,?)`).run(
-    'Gerente Teste', 'gerente@teste.com', bcrypt.hashSync('senha123', 10), 'Gerente', 'GERENTE', 1, 0, null
+  db.prepare(
+    `INSERT OR IGNORE INTO usuarios (id,nome,email,senha_hash,cargo,perfil,ativo,tentativas_falhas,bloqueado_until)
+    VALUES (1,?,?,?,?,?,?,?,?)`,
+  ).run(
+    'Gerente Teste',
+    'gerente@teste.com',
+    bcrypt.hashSync('senha123', 10),
+    'Gerente',
+    'GERENTE',
+    1,
+    0,
+    null,
   );
-  db.prepare(`INSERT OR IGNORE INTO fornecedores (id,nome,cnpj,contato,ativo) VALUES (1,?,?,?,1)`)
-    .run('Fornecedor Padrão', null, 'Contato padrão');
+  db.prepare(
+    `INSERT OR IGNORE INTO fornecedores (id,nome,cnpj,contato,ativo) VALUES (1,?,?,?,1)`,
+  ).run('Fornecedor Padrão', null, 'Contato padrão');
 
   const produtos = [
-    [1,'Bateria X','BAT-001','COMPONENTE_ELETRICO','UN','Setor B',1,100,null,0,3,'NAO_APLICA'],
-    [2,'Peça A','PEC-001','PECA_ESTRUTURAL','UN','Setor A',1,50,null,4,3,'NAO_APLICA'],
-    [3,'Bicicleta City','BIKE-001','VEICULO','UN','Setor C',1,1500,null,2,1,'MONTADO'],
-    [4,'Pneu de Segurança','PNEU-001','PECA_SEGURANCA','UN','Setor D',1,80,null,6,2,'NAO_APLICA']
+    [
+      1,
+      'Bateria X',
+      'BAT-001',
+      'COMPONENTE_ELETRICO',
+      'UN',
+      'Setor B',
+      1,
+      100,
+      null,
+      0,
+      3,
+      'NAO_APLICA',
+    ],
+    [2, 'Peça A', 'PEC-001', 'PECA_ESTRUTURAL', 'UN', 'Setor A', 1, 50, null, 4, 3, 'NAO_APLICA'],
+    [3, 'Bicicleta City', 'BIKE-001', 'VEICULO', 'UN', 'Setor C', 1, 1500, null, 2, 1, 'MONTADO'],
+    [
+      4,
+      'Pneu de Segurança',
+      'PNEU-001',
+      'PECA_SEGURANCA',
+      'UN',
+      'Setor D',
+      1,
+      80,
+      null,
+      6,
+      2,
+      'NAO_APLICA',
+    ],
   ];
   const stmt = db.prepare(`INSERT OR IGNORE INTO produtos
     (id,nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo)
@@ -201,11 +241,13 @@ const conexaoInstancia = {
   obterBanco: () => db,
   executarEmTransacao,
   resetarBancoParaTestes: () => {
-    db.exec(`DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`);
+    db.exec(
+      `DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`,
+    );
     if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
       seedDadosIniciais();
     }
-  }
+  },
 };
 
 module.exports = conexaoInstancia;

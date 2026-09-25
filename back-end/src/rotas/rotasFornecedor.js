@@ -4,10 +4,35 @@ const { validarAutenticacao, autorizarPerfil } = require('../servicos/servicoAut
 
 const router = express.Router();
 
-router.get('/', validarAutenticacao, autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorFornecedor.listarFornecedores);
-router.get('/:id', validarAutenticacao, autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorFornecedor.buscarFornecedorPorId);
-router.post('/', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorFornecedor.criarFornecedor);
-router.put('/:id', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorFornecedor.atualizarFornecedor);
-router.delete('/:id', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorFornecedor.inativarFornecedor);
+router.get(
+  '/',
+  validarAutenticacao,
+  autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'),
+  controladorFornecedor.listarFornecedores,
+);
+router.get(
+  '/:id',
+  validarAutenticacao,
+  autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'),
+  controladorFornecedor.buscarFornecedorPorId,
+);
+router.post(
+  '/',
+  validarAutenticacao,
+  autorizarPerfil('ANALISTA', 'GERENTE'),
+  controladorFornecedor.criarFornecedor,
+);
+router.put(
+  '/:id',
+  validarAutenticacao,
+  autorizarPerfil('ANALISTA', 'GERENTE'),
+  controladorFornecedor.atualizarFornecedor,
+);
+router.delete(
+  '/:id',
+  validarAutenticacao,
+  autorizarPerfil('ANALISTA', 'GERENTE'),
+  controladorFornecedor.inativarFornecedor,
+);
 
 module.exports = router;

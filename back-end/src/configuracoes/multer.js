@@ -18,7 +18,7 @@ const armazenamento = multer.diskStorage({
     const extensaoSegura = extensoesPermitidas.has(ext) ? ext : '.png';
     const nomeArquivo = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extensaoSegura}`;
     cb(null, nomeArquivo);
-  }
+  },
 });
 
 const upload = multer({
@@ -35,7 +35,7 @@ const upload = multer({
     }
 
     cb(new Error('Apenas arquivos de imagem válidos (PNG, JPG, JPEG) são permitidos'));
-  }
+  },
 });
 
 module.exports = upload;

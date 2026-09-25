@@ -1,6 +1,16 @@
 const tabelas = {
   usuarios: {
-    colunas: ['id', 'nome', 'email', 'senha_hash', 'cargo', 'perfil', 'ativo', 'tentativas_falhas', 'bloqueado_until'],
+    colunas: [
+      'id',
+      'nome',
+      'email',
+      'senha_hash',
+      'cargo',
+      'perfil',
+      'ativo',
+      'tentativas_falhas',
+      'bloqueado_until',
+    ],
     definicao: `CREATE TABLE usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT NOT NULL,
@@ -11,7 +21,7 @@ const tabelas = {
       ativo INTEGER DEFAULT 1,
       tentativas_falhas INTEGER DEFAULT 0,
       bloqueado_until DATETIME
-    )`
+    )`,
   },
   fornecedores: {
     colunas: ['id', 'nome', 'cnpj', 'contato', 'ativo'],
@@ -21,10 +31,27 @@ const tabelas = {
       cnpj TEXT,
       contato TEXT,
       ativo INTEGER DEFAULT 1
-    )`
+    )`,
   },
   produtos: {
-    colunas: ['id', 'nome', 'codigo_interno', 'categoria', 'unidade_medida', 'localizacao_deposito', 'fornecedor_id', 'custo', 'dimensoes', 'estoque_atual', 'estoque_minimo', 'estado_montagem', 'ativo', 'imagem_url', 'tipo_rastreabilidade', 'demanda_prevista'],
+    colunas: [
+      'id',
+      'nome',
+      'codigo_interno',
+      'categoria',
+      'unidade_medida',
+      'localizacao_deposito',
+      'fornecedor_id',
+      'custo',
+      'dimensoes',
+      'estoque_atual',
+      'estoque_minimo',
+      'estado_montagem',
+      'ativo',
+      'imagem_url',
+      'tipo_rastreabilidade',
+      'demanda_prevista',
+    ],
     definicao: `CREATE TABLE produtos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT NOT NULL,
@@ -43,10 +70,30 @@ const tabelas = {
       tipo_rastreabilidade TEXT DEFAULT 'NENHUMA',
       demanda_prevista INTEGER DEFAULT 0,
       FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL
-    )`
+    )`,
   },
   movimentacoes: {
-    colunas: ['id', 'produto_id', 'usuario_id', 'tipo', 'quantidade', 'data_movimentacao', 'numero_nota_fiscal', 'numero_pedido', 'numero_pedido_venda', 'destinatario', 'motivo', 'fornecedor_id', 'tipo_transporte', 'montado_desmontado', 'localizacao', 'observacao', 'estoque_anterior', 'estoque_novo', 'movimentacao_origem_id'],
+    colunas: [
+      'id',
+      'produto_id',
+      'usuario_id',
+      'tipo',
+      'quantidade',
+      'data_movimentacao',
+      'numero_nota_fiscal',
+      'numero_pedido',
+      'numero_pedido_venda',
+      'destinatario',
+      'motivo',
+      'fornecedor_id',
+      'tipo_transporte',
+      'montado_desmontado',
+      'localizacao',
+      'observacao',
+      'estoque_anterior',
+      'estoque_novo',
+      'movimentacao_origem_id',
+    ],
     definicao: `CREATE TABLE movimentacoes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       produto_id INTEGER NOT NULL,
@@ -71,10 +118,21 @@ const tabelas = {
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
       FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
       FOREIGN KEY (movimentacao_origem_id) REFERENCES movimentacoes(id) ON DELETE SET NULL
-    )`
+    )`,
   },
   rastreabilidade: {
-    colunas: ['id', 'produto_id', 'movimentacao_id', 'tipo', 'numero_serie', 'lote', 'data_validade', 'identificador_unico', 'status', 'localizacao'],
+    colunas: [
+      'id',
+      'produto_id',
+      'movimentacao_id',
+      'tipo',
+      'numero_serie',
+      'lote',
+      'data_validade',
+      'identificador_unico',
+      'status',
+      'localizacao',
+    ],
     definicao: `CREATE TABLE rastreabilidade (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       produto_id INTEGER NOT NULL,
@@ -88,7 +146,7 @@ const tabelas = {
       localizacao TEXT,
       FOREIGN KEY (produto_id) REFERENCES produtos(id),
       FOREIGN KEY (movimentacao_id) REFERENCES movimentacoes(id) ON DELETE SET NULL
-    )`
+    )`,
   },
   alertas: {
     colunas: ['id', 'produto_id', 'mensagem', 'lido', 'criado_em'],
@@ -99,10 +157,19 @@ const tabelas = {
       lido INTEGER DEFAULT 0,
       criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (produto_id) REFERENCES produtos(id)
-    )`
+    )`,
   },
   auditoria: {
-    colunas: ['id', 'produto_id', 'usuario_id', 'acao', 'antigo_valor', 'novo_valor', 'justificativa', 'data'],
+    colunas: [
+      'id',
+      'produto_id',
+      'usuario_id',
+      'acao',
+      'antigo_valor',
+      'novo_valor',
+      'justificativa',
+      'data',
+    ],
     definicao: `CREATE TABLE auditoria (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       produto_id INTEGER,
@@ -114,10 +181,23 @@ const tabelas = {
       data TEXT NOT NULL,
       FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL,
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
-    )`
+    )`,
   },
   devolucoes: {
-    colunas: ['id', 'produto_id', 'usuario_id', 'origem', 'motivo', 'estado_produto', 'numero_pedido_venda', 'reaproveitavel', 'quantidade', 'data_devolucao', 'status', 'observacao'],
+    colunas: [
+      'id',
+      'produto_id',
+      'usuario_id',
+      'origem',
+      'motivo',
+      'estado_produto',
+      'numero_pedido_venda',
+      'reaproveitavel',
+      'quantidade',
+      'data_devolucao',
+      'status',
+      'observacao',
+    ],
     definicao: `CREATE TABLE devolucoes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       produto_id INTEGER NOT NULL,
@@ -133,7 +213,7 @@ const tabelas = {
       observacao TEXT,
       FOREIGN KEY (produto_id) REFERENCES produtos(id),
       FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
-    )`
+    )`,
   },
   notificacoes: {
     colunas: ['id', 'setor', 'titulo', 'mensagem', 'produto_id', 'lida', 'criada_em'],
@@ -146,25 +226,44 @@ const tabelas = {
       lida INTEGER DEFAULT 0,
       criada_em TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL
-    )`
-  }
+    )`,
+  },
 };
 
 const ordemDescarte = [
-  'rastreabilidade', 'alertas', 'auditoria', 'devolucoes', 'notificacoes',
-  'movimentacoes', 'produtos', 'usuarios', 'fornecedores'
+  'rastreabilidade',
+  'alertas',
+  'auditoria',
+  'devolucoes',
+  'notificacoes',
+  'movimentacoes',
+  'produtos',
+  'usuarios',
+  'fornecedores',
 ];
 const ordemCriacao = [
-  'usuarios', 'fornecedores', 'produtos', 'movimentacoes', 'rastreabilidade',
-  'alertas', 'auditoria', 'devolucoes', 'notificacoes'
+  'usuarios',
+  'fornecedores',
+  'produtos',
+  'movimentacoes',
+  'rastreabilidade',
+  'alertas',
+  'auditoria',
+  'devolucoes',
+  'notificacoes',
 ];
 
 function verificarColunasDesconhecidas(db) {
   for (const [tabela, { colunas }] of Object.entries(tabelas)) {
-    const existentes = db.prepare(`PRAGMA table_info(${tabela})`).all().map((coluna) => coluna.name);
+    const existentes = db
+      .prepare(`PRAGMA table_info(${tabela})`)
+      .all()
+      .map((coluna) => coluna.name);
     const desconhecidas = existentes.filter((coluna) => !colunas.includes(coluna));
     if (desconhecidas.length) {
-      throw new Error(`A tabela ${tabela} contém colunas sem mapeamento de migração: ${desconhecidas.join(', ')}.`);
+      throw new Error(
+        `A tabela ${tabela} contém colunas sem mapeamento de migração: ${desconhecidas.join(', ')}.`,
+      );
     }
   }
 }
@@ -183,25 +282,33 @@ function verificarRegistrosOrfaos(db) {
     ['auditoria', 'usuario_id', 'usuarios'],
     ['devolucoes', 'produto_id', 'produtos'],
     ['devolucoes', 'usuario_id', 'usuarios'],
-    ['notificacoes', 'produto_id', 'produtos']
+    ['notificacoes', 'produto_id', 'produtos'],
   ];
   const problemas = [];
 
   for (const [tabela, coluna, referenciada] of referencias) {
-    const registros = db.prepare(`
+    const registros = db
+      .prepare(
+        `
       SELECT origem.id AS id, origem.${coluna} AS referencia
       FROM ${tabela} AS origem
       LEFT JOIN ${referenciada} AS destino ON destino.id = origem.${coluna}
       WHERE origem.${coluna} IS NOT NULL AND destino.id IS NULL
       LIMIT 5
-    `).all();
+    `,
+      )
+      .all();
     if (registros.length) {
-      problemas.push(`${tabela}.${coluna}: ${registros.map((registro) => `${registro.id}->${registro.referencia}`).join(', ')}`);
+      problemas.push(
+        `${tabela}.${coluna}: ${registros.map((registro) => `${registro.id}->${registro.referencia}`).join(', ')}`,
+      );
     }
   }
 
   if (problemas.length) {
-    throw new Error(`Registros órfãos impedem a migração de chaves estrangeiras: ${problemas.join('; ')}.`);
+    throw new Error(
+      `Registros órfãos impedem a migração de chaves estrangeiras: ${problemas.join('; ')}.`,
+    );
   }
 }
 
@@ -209,9 +316,11 @@ function up(db) {
   verificarColunasDesconhecidas(db);
   verificarRegistrosOrfaos(db);
   db.exec('PRAGMA defer_foreign_keys = ON');
-  const sequencias = db.prepare(
-    `SELECT name, seq FROM sqlite_sequence WHERE name IN (${ordemCriacao.map(() => '?').join(', ')})`
-  ).all(...ordemCriacao);
+  const sequencias = db
+    .prepare(
+      `SELECT name, seq FROM sqlite_sequence WHERE name IN (${ordemCriacao.map(() => '?').join(', ')})`,
+    )
+    .all(...ordemCriacao);
 
   for (const tabela of ordemCriacao) {
     db.exec(`CREATE TEMP TABLE backup_${tabela} AS SELECT * FROM ${tabela}`);
@@ -232,7 +341,7 @@ function up(db) {
     if (existente) {
       db.prepare('UPDATE sqlite_sequence SET seq = ? WHERE name = ?').run(
         Math.max(Number(seq), Number(existente.seq)),
-        name
+        name,
       );
     } else {
       db.prepare('INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(name, seq);
@@ -252,7 +361,9 @@ function up(db) {
 
   const violacoes = db.prepare('PRAGMA foreign_key_check').all();
   if (violacoes.length) {
-    throw new Error(`A validação de chaves estrangeiras encontrou ${violacoes.length} violação(ões).`);
+    throw new Error(
+      `A validação de chaves estrangeiras encontrou ${violacoes.length} violação(ões).`,
+    );
   }
 }
 

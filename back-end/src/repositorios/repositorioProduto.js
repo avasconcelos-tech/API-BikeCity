@@ -3,33 +3,40 @@ const conexaoBanco = require('./conexaoBanco');
 const db = conexaoBanco.obterBanco();
 
 function listarProdutos(incluirInativos = false) {
-  const query = incluirInativos ? 'SELECT * FROM produtos ORDER BY id' : 'SELECT * FROM produtos WHERE ativo = 1 ORDER BY id';
-  return db.prepare(query).all().map((produto) => ({
-    ...produto,
-    ativo: Boolean(produto.ativo)
-  }));
+  const query = incluirInativos
+    ? 'SELECT * FROM produtos ORDER BY id'
+    : 'SELECT * FROM produtos WHERE ativo = 1 ORDER BY id';
+  return db
+    .prepare(query)
+    .all()
+    .map((produto) => ({
+      ...produto,
+      ativo: Boolean(produto.ativo),
+    }));
 }
 
 function criarProduto(produtoInput) {
-  const resultado = db.prepare(
-    `INSERT INTO produtos (nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo,tipo_rastreabilidade,demanda_prevista)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(
-    produtoInput.nome,
-    produtoInput.codigo_interno,
-    produtoInput.categoria,
-    produtoInput.unidade_medida,
-    produtoInput.localizacao_deposito,
-    produtoInput.fornecedor_id ?? null,
-    produtoInput.custo ?? 0,
-    produtoInput.dimensoes ?? null,
-    produtoInput.estoque_atual ?? 0,
-    produtoInput.estoque_minimo ?? 5,
-    produtoInput.estado_montagem ?? 'NAO_APLICA',
-    produtoInput.ativo === undefined ? 1 : Number(Boolean(produtoInput.ativo)),
-    produtoInput.tipo_rastreabilidade ?? 'NENHUMA',
-    produtoInput.demanda_prevista ?? 0
-  );
+  const resultado = db
+    .prepare(
+      `INSERT INTO produtos (nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo,tipo_rastreabilidade,demanda_prevista)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    )
+    .run(
+      produtoInput.nome,
+      produtoInput.codigo_interno,
+      produtoInput.categoria,
+      produtoInput.unidade_medida,
+      produtoInput.localizacao_deposito,
+      produtoInput.fornecedor_id ?? null,
+      produtoInput.custo ?? 0,
+      produtoInput.dimensoes ?? null,
+      produtoInput.estoque_atual ?? 0,
+      produtoInput.estoque_minimo ?? 5,
+      produtoInput.estado_montagem ?? 'NAO_APLICA',
+      produtoInput.ativo === undefined ? 1 : Number(Boolean(produtoInput.ativo)),
+      produtoInput.tipo_rastreabilidade ?? 'NENHUMA',
+      produtoInput.demanda_prevista ?? 0,
+    );
   return buscarProdutoPorId(Number(resultado.lastInsertRowid));
 }
 
@@ -38,15 +45,37 @@ function buscarProdutoPorId(id) {
   if (!produto) return null;
   return {
     ...produto,
-    ativo: Boolean(produto.ativo)
+    ativo: Boolean(produto.ativo),
   };
+}
+
+function buscarPorCodigo(codigo) {
+  const produto = db
+    .prepare('SELECT * FROM produtos WHERE ativo = 1 AND codigo_interno = ?')
+    .get(codigo);
+  if (!produto) return null;
+  return { ...produto, ativo: Boolean(produto.ativo) };
 }
 
 function atualizarProduto(id, dadosParaAtualizar) {
   const campos = [];
   const valores = [];
 
-  const camposPermitidos = ['nome', 'codigo_interno', 'categoria', 'unidade_medida', 'localizacao_deposito', 'fornecedor_id', 'custo', 'dimensoes', 'estoque_minimo', 'estado_montagem', 'imagem_url', 'tipo_rastreabilidade', 'demanda_prevista'];
+  const camposPermitidos = [
+    'nome',
+    'codigo_interno',
+    'categoria',
+    'unidade_medida',
+    'localizacao_deposito',
+    'fornecedor_id',
+    'custo',
+    'dimensoes',
+    'estoque_minimo',
+    'estado_montagem',
+    'imagem_url',
+    'tipo_rastreabilidade',
+    'demanda_prevista',
+  ];
   for (const campo of camposPermitidos) {
     if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, campo)) {
       campos.push(`${campo} = ?`);
@@ -82,8 +111,9 @@ module.exports = {
   listarProdutos,
   criarProduto,
   buscarProdutoPorId,
+  buscarPorCodigo,
   atualizarProduto,
   inativarProduto,
   reativarProduto,
-  atualizarEstoqueProduto
+  atualizarEstoqueProduto,
 };

@@ -5,5 +5,5 @@ if (!process.env.JWT_SECRET) {
 }
 
 module.exports = {
-  SECRET: process.env.JWT_SECRET
+  SECRET: process.env.JWT_SECRET,
 };

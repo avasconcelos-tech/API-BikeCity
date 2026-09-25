@@ -1,14 +1,17 @@
 function adicionarColunaSeFaltar(db, tabela, coluna, definicao) {
-  const colunas = db.prepare(`PRAGMA table_info(${tabela})`).all().map((colunaTabela) => colunaTabela.name);
+  const colunas = db
+    .prepare(`PRAGMA table_info(${tabela})`)
+    .all()
+    .map((colunaTabela) => colunaTabela.name);
   if (!colunas.includes(coluna)) {
     db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${definicao}`);
   }
 }
 
 function normalizarCnpjsFornecedores(db) {
-  const fornecedores = db.prepare(
-    'SELECT id, cnpj FROM fornecedores WHERE cnpj IS NOT NULL ORDER BY id'
-  ).all();
+  const fornecedores = db
+    .prepare('SELECT id, cnpj FROM fornecedores WHERE cnpj IS NOT NULL ORDER BY id')
+    .all();
   const cnpjsEncontrados = new Set();
   const atualizarCnpj = db.prepare('UPDATE fornecedores SET cnpj = ? WHERE id = ?');
 
@@ -24,7 +27,8 @@ function normalizarCnpjsFornecedores(db) {
 }
 
 function corrigirProdutosComColunasTrocadas(db) {
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE produtos
     SET dimensoes = NULL,
         estado_montagem = dimensoes,
@@ -34,7 +38,8 @@ function corrigirProdutosComColunasTrocadas(db) {
       AND tipo_rastreabilidade GLOB '[0-9]*'
       AND estado_montagem IN ('NENHUMA', 'BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA')
       AND dimensoes IN ('NAO_APLICA', 'MONTADO', 'DESMONTADO')
-  `).run();
+  `,
+  ).run();
 }
 
 function up(db) {
@@ -71,7 +76,7 @@ function up(db) {
     ['auditoria', 'antigo_valor', 'TEXT'],
     ['auditoria', 'novo_valor', 'TEXT'],
     ['auditoria', 'justificativa', 'TEXT'],
-    ['auditoria', 'data', 'TEXT']
+    ['auditoria', 'data', 'TEXT'],
   ]) {
     adicionarColunaSeFaltar(db, tabela, coluna, definicao);
   }
