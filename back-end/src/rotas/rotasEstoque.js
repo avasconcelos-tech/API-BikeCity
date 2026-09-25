@@ -4,6 +4,7 @@ const {authenticate,authorizePerfil}=require('../servicos/servicoAutenticacao');
 const router=express.Router();
 const todos=authorizePerfil('OPERACIONAL','ANALISTA','GERENTE');
 router.get('/movimentacoes',authenticate,todos,c.listarMovimentacoes);
+router.post('/movimentacoes/:id/estorno',authenticate,todos,c.registrarEstorno);
 router.get('/rastreabilidade',authenticate,todos,c.listarRastreabilidade);
 router.get('/alertas',authenticate,todos,c.listarAlertas);
 router.patch('/alertas/:id/lido',authenticate,todos,c.marcarAlerta);

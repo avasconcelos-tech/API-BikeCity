@@ -1,21 +1,75 @@
 const conexaoBanco = require('./conexaoBanco');
 const db = conexaoBanco.getDb();
 
-function listarMovimentacoes(produtoId = null) {
+function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
   const params = [];
-  let query = `SELECT m.*, p.nome AS produto_nome, u.nome AS usuario_nome
-    FROM movimentacoes m LEFT JOIN produtos p ON p.id=m.produto_id LEFT JOIN usuarios u ON u.id=m.usuario_id`;
-  if (produtoId !== null && produtoId !== undefined) { query += ' WHERE m.produto_id = ?'; params.push(Number(produtoId)); }
-  query += ' ORDER BY m.data_movimentacao DESC, m.id DESC';
-  return db.prepare(query).all(...params);
+  const clausulas = [];
+  const produtoId = filtros.produto_id;
+  const tipo = filtros.tipo;
+  const usuarioId = filtros.usuario_id;
+  const dataInicio = filtros.data_inicio;
+  const dataFim = filtros.data_fim;
+  const busca = filtros.busca;
+
+  if (produtoId !== null && produtoId !== undefined && produtoId !== '') { clausulas.push('m.produto_id = ?'); params.push(Number(produtoId)); }
+  if (tipo) { clausulas.push('UPPER(m.tipo) = ?'); params.push(String(tipo).toUpperCase()); }
+  if (usuarioId !== null && usuarioId !== undefined && usuarioId !== '') { clausulas.push('m.usuario_id = ?'); params.push(Number(usuarioId)); }
+  if (dataInicio) { clausulas.push('date(m.data_movimentacao) >= date(?)'); params.push(dataInicio); }
+  if (dataFim) { clausulas.push('date(m.data_movimentacao) <= date(?)'); params.push(dataFim); }
+  if (busca) {
+    const termo = `%${String(busca).toLowerCase()}%`;
+    clausulas.push(`(LOWER(COALESCE(p.nome, '')) LIKE ? OR LOWER(COALESCE(u.nome, '')) LIKE ? OR LOWER(COALESCE(m.destinatario, '')) LIKE ? OR LOWER(COALESCE(m.motivo, '')) LIKE ? OR LOWER(COALESCE(m.numero_nota_fiscal, '')) LIKE ? OR LOWER(COALESCE(m.numero_pedido_venda, '')) LIKE ?)`);
+    params.push(termo, termo, termo, termo, termo, termo);
+  }
+
+  const where = clausulas.length ? ` WHERE ${clausulas.join(' AND ')}` : '';
+  const total = db.prepare(`SELECT COUNT(*) AS total
+    FROM movimentacoes m
+    LEFT JOIN produtos p ON p.id = m.produto_id
+    LEFT JOIN usuarios u ON u.id = m.usuario_id ${where}`).get(...params).total;
+
+  const pagina = Number(page) > 0 ? Number(page) : 1;
+  const limite = Number(limit) > 0 ? Number(limit) : 20;
+  const offset = (pagina - 1) * limite;
+  const dados = db.prepare(`SELECT m.*, p.nome AS produto_nome, u.nome AS usuario_nome
+    FROM movimentacoes m
+    LEFT JOIN produtos p ON p.id = m.produto_id
+    LEFT JOIN usuarios u ON u.id = m.usuario_id ${where}
+    ORDER BY m.data_movimentacao DESC, m.id DESC LIMIT ? OFFSET ?`).all(...params, limite, offset);
+
+  return {
+    dados,
+    meta: {
+      page: pagina,
+      limit: limite,
+      total: Number(total),
+      total_pages: Math.max(1, Math.ceil(Number(total) / limite))
+    }
+  };
 }
 function adicionarMovimentacao(m) {
-  const r = db.prepare(`INSERT INTO movimentacoes
-    (produto_id,usuario_id,tipo,quantidade,data_movimentacao,numero_nota_fiscal,numero_pedido,numero_pedido_venda,destinatario,motivo,fornecedor_id,tipo_transporte,montado_desmontado,localizacao,observacao,estoque_anterior,estoque_novo)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-      m.produto_id,m.usuario_id,m.tipo,m.quantidade,m.data_movimentacao,m.numero_nota_fiscal??null,m.numero_pedido??null,m.numero_pedido_venda??null,
-      m.destinatario??null,m.motivo??null,m.fornecedor_id??null,m.tipo_transporte??null,m.montado_desmontado??null,m.localizacao??null,m.observacao??null,m.estoque_anterior??null,m.estoque_novo??null);
-  return { id:Number(r.lastInsertRowid), ...m };
+  const colunas = db.prepare('PRAGMA table_info(movimentacoes)').all().map((coluna) => coluna.name);
+  const temOrigem = colunas.includes('movimentacao_origem_id');
+  const campos = [
+    'produto_id', 'usuario_id', 'tipo', 'quantidade', 'data_movimentacao', 'numero_nota_fiscal', 'numero_pedido', 'numero_pedido_venda',
+    'destinatario', 'motivo', 'fornecedor_id', 'tipo_transporte', 'montado_desmontado', 'localizacao', 'observacao',
+    'estoque_anterior', 'estoque_novo'
+  ];
+
+  if (temOrigem) campos.push('movimentacao_origem_id');
+
+  const placeholders = campos.map(() => '?').join(', ');
+  const sql = `INSERT INTO movimentacoes (${campos.join(',')}) VALUES (${placeholders})`;
+  const params = [
+    m.produto_id,m.usuario_id,m.tipo,m.quantidade,m.data_movimentacao,m.numero_nota_fiscal ?? null,m.numero_pedido ?? null,m.numero_pedido_venda ?? null,
+    m.destinatario ?? null,m.motivo ?? null,m.fornecedor_id ?? null,m.tipo_transporte ?? null,m.montado_desmontado ?? null,m.localizacao ?? null,m.observacao ?? null,
+    m.estoque_anterior ?? null,m.estoque_novo ?? null
+  ];
+
+  if (temOrigem) params.push(m.movimentacao_origem_id ?? null);
+
+  const r = db.prepare(sql).run(...params);
+  return { id: Number(r.lastInsertRowid), ...m };
 }
 function adicionarRastreabilidade(r) {
   const result=db.prepare(`INSERT INTO rastreabilidade
@@ -36,5 +90,17 @@ function listarDevolucoes(){return db.prepare(`SELECT d.*,p.nome AS produto_nome
 function adicionarNotificacao(n){const r=db.prepare('INSERT INTO notificacoes(setor,titulo,mensagem,produto_id,lida,criada_em) VALUES(?,?,?,?,0,?)').run(n.setor,n.titulo,n.mensagem,n.produto_id??null,new Date().toISOString());return {id:Number(r.lastInsertRowid),...n,lida:false};}
 function listarNotificacoes(setor=null){if(setor)return db.prepare('SELECT * FROM notificacoes WHERE setor=? ORDER BY id DESC').all(setor);return db.prepare('SELECT * FROM notificacoes ORDER BY id DESC').all();}
 function resumo(){return db.prepare(`SELECT COUNT(*) total_produtos, COALESCE(SUM(estoque_atual*custo),0) valor_total_estoque, SUM(CASE WHEN estoque_atual<=estoque_minimo THEN 1 ELSE 0 END) estoque_critico FROM produtos WHERE ativo=1`).get();}
-function relatorio(){return {estoque:db.prepare(`SELECT id,nome,codigo_interno,categoria,estoque_atual,estoque_minimo,custo,localizacao_deposito,estado_montagem FROM produtos WHERE ativo=1 ORDER BY nome`).all(), movimentacoes:db.prepare(`SELECT m.*,p.nome produto_nome FROM movimentacoes m JOIN produtos p ON p.id=m.produto_id ORDER BY m.id DESC`).all(), devolucoes:listarDevolucoes(), alertas:listarAlertas()};}
+function relatorio(filtros = {}) {
+  const movimentacoes = listarMovimentacoes(filtros, filtros.page || 1, filtros.limit || 20);
+  const estoque = db.prepare(`SELECT id,nome,codigo_interno,categoria,estoque_atual,estoque_minimo,custo,localizacao_deposito,estado_montagem FROM produtos WHERE ativo=1 ORDER BY nome`).all();
+  const resumoGeral = resumo();
+  return {
+    estoque,
+    movimentacoes: movimentacoes.dados,
+    devolucoes: listarDevolucoes(),
+    alertas: listarAlertas(),
+    resumo: resumoGeral,
+    meta: movimentacoes.meta
+  };
+}
 module.exports={listarMovimentacoes,adicionarMovimentacao,adicionarRastreabilidade,listarRastreabilidade,adicionarAlerta,listarAlertas,marcarAlertaLido,adicionarAuditoria,adicionarDevolucao,listarDevolucoes,adicionarNotificacao,listarNotificacoes,resumo,relatorio};

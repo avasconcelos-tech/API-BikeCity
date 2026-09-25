@@ -181,6 +181,7 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('movimentacoes', 'observacao', 'TEXT');
   adicionarColunaSeFaltar('movimentacoes', 'estoque_anterior', 'INTEGER');
   adicionarColunaSeFaltar('movimentacoes', 'estoque_novo', 'INTEGER');
+  adicionarColunaSeFaltar('movimentacoes', 'movimentacao_origem_id', 'INTEGER');
   adicionarColunaSeFaltar('alertas', 'produto_id', 'INTEGER');
   adicionarColunaSeFaltar('alertas', 'mensagem', 'TEXT');
   adicionarColunaSeFaltar('alertas', 'lido', 'INTEGER DEFAULT 0');
