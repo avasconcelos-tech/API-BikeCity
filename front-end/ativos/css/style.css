@@ -267,6 +267,74 @@ form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
+.tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 0 24px;
+  padding-bottom: 4px;
+}
+.tabs button {
+  flex: 0 0 auto;
+  background: var(--surface);
+  color: var(--blue-900);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.tabs button.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+}
+.rastreio-item {
+  align-items: end;
+  margin-bottom: 12px;
+}
+.rastreio-item > strong {
+  align-self: center;
+  color: var(--muted);
+}
+.rastreio-saida {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.rastreio-opcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 500;
+}
+.rastreio-opcao input {
+  width: auto;
+}
+.history-filters {
+  display: grid;
+  grid-template-columns:
+    auto minmax(140px, 1fr) auto minmax(140px, 1fr) auto minmax(140px, 1fr)
+    auto minmax(140px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.history-filters label {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+.pagination button {
+  min-height: 36px;
+  padding: 7px 12px;
+}
 label {
   display: block;
   margin-bottom: 7px;
@@ -608,6 +676,12 @@ tbody tr:hover {
   }
   form {
     padding: 17px;
+  }
+  .history-filters {
+    grid-template-columns: 1fr;
+  }
+  .history-filters label {
+    margin-top: 4px;
   }
   .modal-overlay {
     align-items: flex-end;
