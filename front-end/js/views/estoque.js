@@ -116,6 +116,8 @@ $('form-entrada')?.addEventListener('submit', async (e) => {
 });
 $('produto-saida')?.addEventListener('change', () => carregarRastreabilidadeSaida());
 $('qtd-saida')?.addEventListener('input', () => carregarRastreabilidadeSaida());
+$('produto-devolucao')?.addEventListener('change', () => carregarRastreabilidadeDevolucao());
+$('qtd-devolucao')?.addEventListener('input', () => carregarRastreabilidadeDevolucao());
 async function carregarRastreabilidadeSaida() {
   const produto = pSelecionado('produto-saida');
   const box = $('rastreio-saida');
@@ -123,6 +125,33 @@ async function carregarRastreabilidadeSaida() {
   if (!produto) {
     box.innerHTML = '';
     return;
+  }
+  async function carregarRastreabilidadeDevolucao() {
+    const produto = pSelecionado('produto-devolucao');
+    const box = $('rastreio-devolucao');
+    if (!box) return;
+    if (!produto) {
+      box.innerHTML = '';
+      return;
+    }
+    const tipo = tipoRastreabilidade(produto);
+    if (!['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA'].includes(tipo)) {
+      box.innerHTML = '';
+      return;
+    }
+    try {
+      const resposta = await getRastreabilidade(produto.id);
+      const itens = (resposta.dados || []).filter((item) => item.status === 'EM_ESTOQUE');
+      box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis devolvidos</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_devolucao" value="${item.id}"><span>${item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
+      const quantidade = Number($('qtd-devolucao').value || 1);
+      box.querySelectorAll('input').forEach((input) =>
+        input.addEventListener('change', () => {
+          if (box.querySelectorAll('input:checked').length > quantidade) input.checked = false;
+        }),
+      );
+    } catch (erro) {
+      box.innerHTML = `<p class="form-error">${erro.message || 'Não foi possível carregar os itens rastreáveis.'}</p>`;
+    }
   }
   const tipo = tipoRastreabilidade(produto);
   if (!['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA'].includes(tipo)) {
@@ -169,6 +198,9 @@ $('form-devolucao')?.addEventListener('submit', async (e) => {
     estado_produto: $('estado-devolucao').value,
     numero_pedido_venda: $('pedido-devolucao').value,
     reaproveitavel: $('reaproveitavel').checked,
+    rastreabilidade_ids: [
+      ...document.querySelectorAll('input[name="rastreabilidade_devolucao"]:checked'),
+    ].map((input) => Number(input.value)),
     observacao: $('obs-devolucao').value,
   };
   await enviar(() => postDevolucao(dados), 'Devolução registrada!', 'form-devolucao');
