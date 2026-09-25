@@ -308,10 +308,17 @@ test('produto específico, atualização e inativação funcionam com lista filt
       estado_montagem: 'NAO_APLICA'
     });
 
-  assert.equal(atualizacao.status, 200);
+  assert.equal(atualizacao.status, 200, JSON.stringify(atualizacao.body));
   assert.equal(atualizacao.body.dados.nome, 'Peça A Editada');
   assert.equal(atualizacao.body.dados.estoque_minimo, 2);
   assert.equal(atualizacao.body.dados.demanda_prevista, 18);
+
+  const ajuste = await request(app)
+    .post('/api/v1/estoque/ajuste-manual')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ produto_id: 2, nova_quantidade: 0, justificativa: 'Zerar estoque para inativar' });
+
+  assert.equal(ajuste.status, 201);
 
   const inativacao = await request(app)
     .delete('/api/v1/produtos/2')
@@ -359,6 +366,18 @@ test('produtos inativos não recebem movimentações de estoque e só podem ser 
 
   assert.equal(produto.status, 200);
   assert.equal(produto.body.dados.ativo, true);
+
+  const ajuste = await request(app)
+    .post('/api/v1/estoque/ajuste-manual')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ produto_id: 2, nova_quantidade: 0, justificativa: 'Zerar estoque para inativar' });
+  assert.equal(ajuste.status, 201);
+
+  const inativacaoComSaldoZerado = await request(app)
+    .delete('/api/v1/produtos/2')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(inativacaoComSaldoZerado.status, 200);
+  assert.equal(inativacaoComSaldoZerado.body.dados.ativo, false);
 
   const movimentacoes = await Promise.all([
     request(app).post('/api/v1/estoque/entradas').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, fornecedor_id: 1, numero_nota_fiscal: 'NF-999', numero_pedido_compra: 'PC-999' }),
