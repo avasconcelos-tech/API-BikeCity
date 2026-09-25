@@ -252,7 +252,7 @@ GET /api/v1/usuarios?incluirInativos=true
       "nome": "Ana Souza",
       "email": "ana@bikecity.com",
       "cargo": "Atendente",
-      "perfil": "OPERADOR",
+      "perfil": "OPERACIONAL",
       "ativo": true
     }
   ]
@@ -275,7 +275,7 @@ GET /api/v1/usuarios?incluirInativos=true
     "nome": "Ana Souza",
     "email": "ana@bikecity.com",
     "cargo": "Atendente",
-    "perfil": "OPERADOR",
+    "perfil": "OPERACIONAL",
     "ativo": true,
     "tentativas_falhas": 0,
     "bloqueado_until": null
@@ -306,9 +306,11 @@ GET /api/v1/usuarios?incluirInativos=true
   "email": "joao@bikecity.com",
   "senha": "senhaForte123",
   "cargo": "Mecânico",
-  "perfil": "OPERADOR"
+  "perfil": "OPERACIONAL"
 }
 ```
+
+`nome`, `email` e `perfil` são obrigatórios. O e-mail deve ter formato válido, a senha deve possuir no mínimo 6 caracteres e `perfil` aceita somente `OPERACIONAL`, `ANALISTA` ou `GERENTE`. `cargo` é um texto descritivo livre e opcional.
 
 ### Resposta — 201 Created
 
@@ -331,12 +333,15 @@ GET /api/v1/usuarios?incluirInativos=true
 }
 ```
 
+Campos inválidos retornam `400 Bad Request`.
+
 ## 4. Atualizar Usuário
 
 * **Rota:** `PUT /api/v1/usuarios/:id`
 * **Acesso:** Autenticado
 * **Permissão:** `GERENTE`
 * **Observação:** Permite atualização parcial dos campos `nome`, `email`, `cargo` e `perfil`. Não altera a senha por esta rota.
+* **Validação:** O e-mail e o perfil devem ser válidos; `cargo` é texto descritivo livre.
 
 ### Body da Requisição
 
@@ -358,7 +363,7 @@ GET /api/v1/usuarios?incluirInativos=true
     "nome": "João Pedro Santos",
     "email": "joao@bikecity.com",
     "cargo": "Mecânico Chefe",
-    "perfil": "OPERADOR",
+    "perfil": "OPERACIONAL",
     "ativo": true
   }
 }
@@ -373,12 +378,15 @@ GET /api/v1/usuarios?incluirInativos=true
 }
 ```
 
+`400 Bad Request` indica campo inválido; `409 Conflict` indica e-mail já cadastrado ou tentativa de remover o perfil do último gerente ativo.
+
 ## 5. Desativar Usuário
 
 * **Rota:** `DELETE /api/v1/usuarios/:id`
 * **Acesso:** Autenticado
 * **Permissão:** `GERENTE`
 * **Observação:** Realiza um *soft delete*, alterando a flag `ativo` para `false`/`0`.
+* **Regra:** Não é permitido desativar a própria conta nem o último gerente ativo.
 
 ### Resposta — 200 OK
 
@@ -391,7 +399,7 @@ GET /api/v1/usuarios?incluirInativos=true
     "nome": "João Pedro Santos",
     "email": "joao@bikecity.com",
     "cargo": "Mecânico Chefe",
-    "perfil": "OPERADOR",
+    "perfil": "OPERACIONAL",
     "ativo": false
   }
 }
@@ -406,7 +414,33 @@ GET /api/v1/usuarios?incluirInativos=true
 }
 ```
 
-## 6. Trocar a Própria Senha
+`400 Bad Request` é retornado para tentativa de desativação da própria conta; `409 Conflict` é retornado ao tentar desativar o último gerente ativo.
+
+## 6. Reativar Usuário
+
+* **Rota:** `PATCH /api/v1/usuarios/:id/reativar`
+* **Acesso:** Autenticado
+* **Permissão:** `GERENTE`
+
+`PATCH /api/v1/usuarios/:id/ativar` permanece disponível como alias.
+
+## 7. Redefinir Senha de Outro Usuário
+
+* **Rota:** `PATCH /api/v1/usuarios/:id/senha`
+* **Acesso:** Autenticado
+* **Permissão:** `GERENTE`
+
+### Body da Requisição
+
+```json
+{
+  "novaSenha": "senhaTemporaria123"
+}
+```
+
+A nova senha deve possuir no mínimo 6 caracteres e é armazenada com hash.
+
+## 8. Trocar a Própria Senha
 
 * **Rota:** `PATCH /api/v1/usuarios/me/senha`
 * **Acesso:** Autenticado, qualquer perfil logado
