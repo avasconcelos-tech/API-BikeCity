@@ -67,10 +67,12 @@ test('histórico usa somente movimentações e preserva eventos com a mesma chav
     produto_id: 2, usuario_id: 1, tipo: 'AJUSTE_MANUAL', quantidade: 1,
     data_movimentacao: data, motivo: 'Correção', estoque_anterior: 10, estoque_novo: 11
   });
+
   repositorioEstoque.adicionarMovimentacao({
     produto_id: 2, usuario_id: 1, tipo: 'AJUSTE_MANUAL', quantidade: 1,
     data_movimentacao: data, motivo: 'Correção', estoque_anterior: 10, estoque_novo: 11
   });
+
   repositorioEstoque.adicionarAuditoria({
     produto_id: 2, usuario_id: 1, acao: 'AJUSTE_MANUAL',
     antigo_valor: 10, novo_valor: 11, justificativa: 'Correção', data
@@ -83,4 +85,46 @@ test('histórico usa somente movimentações e preserva eventos com a mesma chav
     movimentacoes.map((movimentacao) => movimentacao.id),
     movimentacoes.map((movimentacao) => movimentacao.id).sort((a, b) => b - a)
   );
+});
+
+test('devolução valida origem e estado e subtrai devoluções para fornecedor', () => {
+  const db = conexaoBanco.getDb();
+  const estoqueInicial = db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual;
+  const invalida = servicoEstoque.registrarDevolucao({
+    produto_id: 2, quantidade: 1, origem: 'abc', motivo: 'Teste', estado_produto: 'INTACTO'
+  }, 1);
+  assert.equal(invalida.statusCode, 400);
+
+  const resultado = servicoEstoque.registrarDevolucao({
+    produto_id: 2, quantidade: 1, origem: 'PARA_FORNECEDOR',
+    motivo: 'Peça com defeito', estado_produto: 'DANIFICADO'
+  }, 1);
+  assert.equal(resultado.statusCode, 201);
+  assert.equal(resultado.payload.dados.novo_estoque_total, estoqueInicial - 1);
+  assert.equal(db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual, estoqueInicial - 1);
+});
+
+test('devolução rastreável exige itens e atualiza status', () => {
+  const db = conexaoBanco.getDb();
+  db.prepare("UPDATE produtos SET tipo_rastreabilidade = 'BATERIA', estoque_atual = 1 WHERE id = 2").run();
+  const movimentacao = repositorioEstoque.adicionarMovimentacao({
+    produto_id: 2, usuario_id: 1, tipo: 'ENTRADA', quantidade: 1,
+    data_movimentacao: new Date().toISOString(), estoque_anterior: 0, estoque_novo: 1
+  });
+  const rastreabilidade = repositorioEstoque.adicionarRastreabilidade({
+    produto_id: 2, movimentacao_id: movimentacao.id, tipo: 'BATERIA',
+    numero_serie: 'BAT-DEV-1', data_validade: '2027-01-01'
+  });
+  const semItem = servicoEstoque.registrarDevolucao({
+    produto_id: 2, quantidade: 1, origem: 'CLIENTE', motivo: 'Troca',
+    estado_produto: 'INTACTO', numero_pedido_venda: 'PV-DEV'
+  }, 1);
+  assert.equal(semItem.statusCode, 400);
+  const resultado = servicoEstoque.registrarDevolucao({
+    produto_id: 2, quantidade: 1, origem: 'CLIENTE', motivo: 'Troca',
+    estado_produto: 'INTACTO', numero_pedido_venda: 'PV-DEV',
+    rastreabilidade_ids: [rastreabilidade.id]
+  }, 1);
+  assert.equal(resultado.statusCode, 201);
+  assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(rastreabilidade.id).status, 'EM_ESTOQUE');
 });

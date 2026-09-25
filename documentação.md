@@ -1259,3 +1259,15 @@ Requer o envio de:
 * Após **3 tentativas de login malsucedidas**, a conta é bloqueada por **15 minutos**.
 * Operações de gestão de usuários são exclusivas do perfil `GERENTE`.
 * Ajustes manuais de estoque são exclusivos do perfil `GERENTE`.
+## Devoluções de estoque
+
+Na rota `POST /api/v1/estoque/devolucoes`, `origem` deve ser `CLIENTE` ou
+`PARA_FORNECEDOR`, e `estado_produto` deve ser `INTACTO` ou `DANIFICADO`.
+
+- `CLIENTE` + `INTACTO` retorna a quantidade ao estoque.
+- `PARA_FORNECEDOR` reduz a quantidade do estoque.
+- Produto `DANIFICADO` não retorna ao estoque. Quando for rastreável, seus itens
+  ficam com status `AVARIA`.
+- Para produtos rastreáveis, envie `rastreabilidade_ids` com exatamente os itens
+  devolvidos. Itens intactos de cliente ficam `EM_ESTOQUE`; itens enviados ao
+  fornecedor ficam `SAIDA`.
