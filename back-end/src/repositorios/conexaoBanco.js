@@ -5,49 +5,7 @@ const bcrypt = require('bcryptjs');
 const nomeBanco = process.env.NODE_ENV === 'test' ? 'database.test.sqlite' : 'database.sqlite';
 const caminhoBanco = path.join(__dirname, '../../', nomeBanco);
 const db = new DatabaseSync(caminhoBanco);
-
-function colunasDaTabela(tabela) {
-  return db.prepare(`PRAGMA table_info(${tabela})`).all().map(c => c.name);
-}
-
-function adicionarColunaSeFaltar(tabela, coluna, definicao) {
-  if (!colunasDaTabela(tabela).includes(coluna)) {
-    db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${definicao}`);
-  }
-}
-
-function migrarCnpjsFornecedores() {
-  const fornecedores = db.prepare(
-    'SELECT id, cnpj FROM fornecedores WHERE cnpj IS NOT NULL ORDER BY id'
-  ).all();
-  const cnpjsEncontrados = new Set();
-  const atualizarCnpj = db.prepare('UPDATE fornecedores SET cnpj = ? WHERE id = ?');
-
-  for (const fornecedor of fornecedores) {
-    const cnpj = String(fornecedor.cnpj).replace(/[./-]/g, '').toUpperCase();
-    if (!cnpj || cnpjsEncontrados.has(cnpj)) {
-      atualizarCnpj.run(null, fornecedor.id);
-      continue;
-    }
-    cnpjsEncontrados.add(cnpj);
-    if (cnpj !== fornecedor.cnpj) atualizarCnpj.run(cnpj, fornecedor.id);
-  }
-}
-
-function corrigirProdutosComColunasTrocadas() {
-  const resultado = db.prepare(`
-    UPDATE produtos
-    SET dimensoes = NULL,
-        estado_montagem = dimensoes,
-        tipo_rastreabilidade = estado_montagem,
-        demanda_prevista = CAST(tipo_rastreabilidade AS INTEGER)
-    WHERE demanda_prevista IS NULL
-      AND tipo_rastreabilidade GLOB '[0-9]*'
-      AND estado_montagem IN ('NENHUMA', 'BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA')
-      AND dimensoes IN ('NAO_APLICA', 'MONTADO', 'DESMONTADO')
-  `).run();
-  return resultado.changes;
-}
+db.exec('PRAGMA foreign_keys = ON');
 
 function criarEstrutura() {
   db.exec(`
@@ -159,58 +117,46 @@ function criarEstrutura() {
     );
   `);
 
-  // Migração segura para bancos antigos.
-  adicionarColunaSeFaltar('produtos', 'imagem_url', 'TEXT');
-  adicionarColunaSeFaltar('produtos', 'tipo_rastreabilidade', "TEXT DEFAULT 'NENHUMA'");
-  adicionarColunaSeFaltar('produtos', 'demanda_prevista', 'INTEGER DEFAULT 0');
-  adicionarColunaSeFaltar('produtos', 'codigo_interno', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'produto_id', 'INTEGER');
-  adicionarColunaSeFaltar('movimentacoes', 'usuario_id', 'INTEGER');
-  adicionarColunaSeFaltar('movimentacoes', 'tipo', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'quantidade', 'INTEGER');
-  adicionarColunaSeFaltar('movimentacoes', 'data_movimentacao', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'numero_nota_fiscal', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'numero_pedido', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'numero_pedido_venda', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'destinatario', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'motivo', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'fornecedor_id', 'INTEGER');
-  adicionarColunaSeFaltar('movimentacoes', 'tipo_transporte', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'montado_desmontado', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'localizacao', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'observacao', 'TEXT');
-  adicionarColunaSeFaltar('movimentacoes', 'estoque_anterior', 'INTEGER');
-  adicionarColunaSeFaltar('movimentacoes', 'estoque_novo', 'INTEGER');
-  adicionarColunaSeFaltar('movimentacoes', 'movimentacao_origem_id', 'INTEGER');
-  adicionarColunaSeFaltar('alertas', 'produto_id', 'INTEGER');
-  adicionarColunaSeFaltar('alertas', 'mensagem', 'TEXT');
-  adicionarColunaSeFaltar('alertas', 'lido', 'INTEGER DEFAULT 0');
-  adicionarColunaSeFaltar('alertas', 'criado_em', 'TEXT');
-  db.exec(`UPDATE alertas SET lido = 1
-    WHERE lido = 0
-      AND id NOT IN (
-        SELECT MAX(id) FROM alertas WHERE lido = 0 GROUP BY produto_id
-      )`);
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_produto_aberto
-    ON alertas(produto_id) WHERE lido = 0`);
-  adicionarColunaSeFaltar('auditoria', 'produto_id', 'INTEGER');
-  adicionarColunaSeFaltar('auditoria', 'usuario_id', 'INTEGER');
-  adicionarColunaSeFaltar('auditoria', 'acao', 'TEXT');
-  adicionarColunaSeFaltar('auditoria', 'antigo_valor', 'TEXT');
-  adicionarColunaSeFaltar('auditoria', 'novo_valor', 'TEXT');
-  adicionarColunaSeFaltar('auditoria', 'justificativa', 'TEXT');
-  adicionarColunaSeFaltar('auditoria', 'data', 'TEXT');
-  migrarCnpjsFornecedores();
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_fornecedores_cnpj
-    ON fornecedores(cnpj)
-    WHERE cnpj IS NOT NULL`);
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rastreabilidade_numero_serie
-    ON rastreabilidade(numero_serie)
-    WHERE numero_serie IS NOT NULL AND TRIM(numero_serie) <> ''`);
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rastreabilidade_identificador_unico
-    ON rastreabilidade(identificador_unico)
-    WHERE identificador_unico IS NOT NULL AND TRIM(identificador_unico) <> ''`);
-  corrigirProdutosComColunasTrocadas();
+}
+
+function executarMigracoes() {
+  const fs = require('fs');
+  const diretorioMigracoes = path.join(__dirname, 'migracoes');
+  db.exec(`CREATE TABLE IF NOT EXISTS schema_versao (
+    versao INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL,
+    aplicado_em TEXT NOT NULL
+  )`);
+  const migracoes = fs.readdirSync(diretorioMigracoes)
+    .filter((arquivo) => /^\d+_[a-z0-9_]+\.js$/.test(arquivo))
+    .sort()
+    .map((arquivo) => ({
+      arquivo,
+      versao: Number(arquivo.match(/^(\d+)_/)[1]),
+      migracao: require(path.join(diretorioMigracoes, arquivo))
+    }));
+
+  let versaoAtual = Number(db.prepare('SELECT COALESCE(MAX(versao), 0) AS versao FROM schema_versao').get().versao);
+  for (const { arquivo, versao, migracao } of migracoes) {
+    if (versao <= versaoAtual) continue;
+    if (versao !== versaoAtual + 1) {
+      throw new Error(`Sequência de migrações incompleta: esperado ${versaoAtual + 1}, encontrado ${versao} (${arquivo}).`);
+    }
+    db.exec('BEGIN');
+    try {
+      migracao.up(db);
+      db.prepare('INSERT INTO schema_versao (versao, nome, aplicado_em) VALUES (?, ?, ?)').run(
+        versao,
+        arquivo,
+        new Date().toISOString()
+      );
+      db.exec('COMMIT');
+      versaoAtual = versao;
+    } catch (erro) {
+      db.exec('ROLLBACK');
+      throw new Error(`Falha ao aplicar migração ${arquivo}: ${erro.message}`, { cause: erro });
+    }
+  }
 }
 
 function seedDadosIniciais() {
@@ -234,6 +180,7 @@ function seedDadosIniciais() {
 }
 
 criarEstrutura();
+executarMigracoes();
 if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
   seedDadosIniciais();
 }

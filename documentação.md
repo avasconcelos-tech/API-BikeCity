@@ -89,7 +89,7 @@ Histórico de entradas, saídas e transferências de estoque.
 | -------------------- | ------------ | ---- | ----- | ----------------- | ----------------------------------------- |
 | `id`                 | INT          | NÃO  | PK    | Auto-increment    | Identificador único                       |
 | `produto_id`         | INT          | NÃO  | FK    |                   | Relaciona com `produtos.id`               |
-| `usuario_id`         | INT          | NÃO  | FK    |                   | Usuário responsável pela operação         |
+| `usuario_id`         | INT          | SIM  | FK    | NULL              | Usuário responsável; definido como NULL se removido |
 | `tipo`               | VARCHAR(50)  | NÃO  |       |                   | Ex: Entrada, Saída, Devolução             |
 | `quantidade`         | INT          | NÃO  |       |                   | Quantidade movimentada                    |
 | `data_movimentacao`  | DATETIME     | NÃO  |       | CURRENT_TIMESTAMP | Data/hora do registro                     |
@@ -107,7 +107,7 @@ Registra notificações atreladas a produtos, como estoque crítico.
 | Campo        | Tipo | Nulo | Chave | Padrão         | Observações                                     |
 | ------------ | ---- | ---- | ----- | -------------- | ----------------------------------------------- |
 | `id`         | INT  | NÃO  | PK    | Auto-increment | Identificador único                             |
-| `produto_id` | INT  | NÃO  | FK    |                | Relaciona com `produtos.id` (ON DELETE CASCADE) |
+| `produto_id` | INT  | NÃO  | FK    |                | Relaciona com `produtos.id`; impede exclusão física do produto |
 | `mensagem`   | TEXT | NÃO  |       |                | Descrição do alerta                             |
 
 ## Tabela: `auditoria`
@@ -117,12 +117,18 @@ Log de alterações manuais e contagens de inventário.
 | Campo           | Tipo     | Nulo | Chave | Padrão         | Observações                    |
 | --------------- | -------- | ---- | ----- | -------------- | ------------------------------ |
 | `id`            | INT      | NÃO  | PK    | Auto-increment | Identificador único            |
-| `produto_id`    | INT      | NÃO  | FK    |                | Relaciona com `produtos.id`    |
-| `usuario_id`    | INT      | NÃO  | FK    |                | Relaciona com `usuarios.id`    |
+| `produto_id`    | INT      | SIM  | FK    | NULL           | Relaciona com `produtos.id`; definido como NULL se removido |
+| `usuario_id`    | INT      | SIM  | FK    | NULL           | Relaciona com `usuarios.id`; definido como NULL se removido |
 | `antigo_valor`  | INT      | NÃO  |       |                | Quantidade de estoque anterior |
 | `novo_valor`    | INT      | NÃO  |       |                | Nova quantidade ajustada       |
 | `justificativa` | TEXT     | SIM  |       |                | Motivo da alteração manual     |
 | `data`          | DATETIME | NÃO  |       |                |                                |
+
+### Integridade referencial e migrações do SQLite
+
+O SQLite é inicializado com `PRAGMA foreign_keys = ON`. Produtos, movimentações, rastreabilidade, alertas, auditoria, devoluções e notificações validam suas referências a produtos, usuários, fornecedores e movimentações. Referências opcionais usam `ON DELETE SET NULL`; referências obrigatórias preservam o histórico e impedem a exclusão física do registro relacionado. O sistema utiliza inativação lógica para produtos, fornecedores e usuários.
+
+As versões aplicadas ficam registradas em `schema_versao`. Novas migrações devem ser adicionadas em `back-end/src/repositorios/migracoes/` com nome numérico sequencial (por exemplo, `003_nome_da_migracao.js`) e exportar `up(db)`. Cada migração é executada em transação e sua versão só é gravada após sucesso. A migração das FKs aborta com a identificação dos registros órfãos encontrados, sem removê-los.
 
 ---
 
