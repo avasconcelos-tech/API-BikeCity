@@ -21,8 +21,7 @@ export async function apiFetch(endpoint, options = {}) {
     });
   } catch (erro) {
     throw new Error(
-      `Não foi possível conectar à API em ${API_BASE_URL}. ` +
-        `Verifique se o servidor está ligado e se a porta 5500 está liberada na rede.`,
+      'Não foi possível conectar à API. Verifique se o servidor está ligado e tente novamente.',
     );
   }
 
