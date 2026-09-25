@@ -1,6 +1,7 @@
 import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
 import { getProdutos, postProduto, putProduto, getFornecedores } from '../api/services.js';
 import { mostrarToast, configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
+import { estaEmAlerta } from '../utilitarios/estoque.js';
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 const $ = (id) => document.getElementById(id),
   modal = $('modal-produto');
@@ -55,7 +56,7 @@ async function carregarProdutos() {
               .replace(
                 '.',
                 ',',
-              )}</td><td>${p.estoque_atual}</td><td>${Number(p.estoque_atual || 0) <= 5 ? 'Baixo' : 'Normal'}</td>${podeEditar ? `<td><button type="button" class="btn-editar-produto" data-produto-id="${p.id}">Editar</button></td>` : ''}</tr>`,
+              )}</td><td>${p.estoque_atual}</td><td>${estaEmAlerta(p) ? 'Baixo' : 'Normal'}</td>${podeEditar ? `<td><button type="button" class="btn-editar-produto" data-produto-id="${p.id}">Editar</button></td>` : ''}</tr>`,
         )
         .join('') || `<tr><td colspan="${podeEditar ? 9 : 8}">Nenhum produto cadastrado.</td></tr>`;
     $('tbody-produtos')
