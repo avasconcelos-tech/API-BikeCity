@@ -30,7 +30,7 @@ function authorizePerfil(...perfis) {
 }
 
 function createToken(usuario) {
-  return jwt.sign({ id: usuario.id, perfil: usuario.perfil, email: usuario.email }, SECRET, { expiresIn: '30m' });
+  return jwt.sign({ id: usuario.id, nome: usuario.nome, perfil: usuario.perfil, email: usuario.email }, SECRET, { expiresIn: '30m' });
 }
 
 function loginUser(email, senha) {

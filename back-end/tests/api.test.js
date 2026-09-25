@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
 const { app, resetState } = require('../src/server');
 
 test.beforeEach(() => resetState());
@@ -14,6 +15,7 @@ test('configuração usa o JWT_SECRET do ambiente', () => {
 test('listar usuários não expõe senha_hash na resposta', async () => {
   const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
+  assert.equal(jwt.decode(token).nome, 'Gerente Teste');
 
   const res = await request(app)
     .get('/api/v1/usuarios')

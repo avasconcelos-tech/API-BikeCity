@@ -1,4 +1,4 @@
-import { checarAutenticacao, obterUsuarioLogado, removerToken } from '../utilitarios/auth.js';
+import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
 import { apiFetch } from '../api/client.js';
 import { getProdutos } from '../api/services.js';
 import { formatarMoeda } from '../utilitarios/formatters.js';
@@ -8,11 +8,6 @@ if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
 let produtos = [];
-
-$('btn-logout').onclick = () => {
-  removerToken();
-  location.href = './login.html';
-};
 
 function estoqueBaixo(produto) {
   return Number(produto.estoque_atual || 0) <= 5;
@@ -64,8 +59,6 @@ function ativarCard(id, acao) {
 
 async function carregar() {
   const usuario = obterUsuarioLogado();
-  $('nome-usuario').textContent = usuario?.email || '';
-
   try {
     const [resumo, respostaProdutos] = await Promise.all([
       apiFetch('/api/v1/dashboard/resumo'),
