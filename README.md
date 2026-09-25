@@ -8,3 +8,16 @@ Sistema de gestão de estoque, compras, logística e rastreabilidade para bicicl
 - Gabriela Carnevali Gonçalves Lima
 - João Marcos Ferreira Benevides
 - Mateus Lopes Ferreira
+
+## Visão geral
+O BikeCity foi desenvolvido para controlar de forma centralizada o ciclo de movimentação de produtos em um ambiente de mobilidade urbana. O sistema permite registrar entradas, saídas, alertas de estoque, usuários, fornecedores e relatórios operacionais, com foco em rastreabilidade e organização do processo logística.
+A aplicação combina backend em Node.js, banco de dados SQLite e interface web para uso interno, sendo adequada para ambientes locais ou rede corporativa.
+
+## Serviço Proposto
+Empresas que administram bicicletas, patinetes e peças de reposição frequentemente enfrentam dificuldades para:
+controlar quantitativos de estoque em tempo real;
+acompanhar itens por lote, série e histórico de movimentação;
+evitar falhas na reposição de produtos;
+manter a operação segura por perfil de acesso;
+reduzir erros em entradas e saídas de mercadorias.
+O BikeCity organiza esses processos em uma solução única, oferecendo rastreabilidade e visibilidade para operação e gestão.
