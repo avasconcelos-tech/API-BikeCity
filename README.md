@@ -23,22 +23,70 @@ reduzir erros em entradas e saídas de mercadorias.
 O BikeCity organiza esses processos em uma solução única, oferecendo rastreabilidade e visibilidade para operação e gestão.
 
 ## Funcionalidades principais
-Cadastro e consulta de produtos;
-Gestão de fornecedores;
-Controle de entradas e saídas de estoque;
-Rastreador por lote, série, nota fiscal e histórico;
-Alertas de estoque mínimo e demanda prevista;
-Autenticação com perfis de usuário;
-Dashboard e relatórios consolidados;
-Upload de imagens e arquivos relacionados aos produtos;
-Ajustes manuais de estoque com controle de permissão;
-Acesso em rede local para múltiplos usuários.
+- Cadastro e consulta de produtos;
+- Gestão de fornecedores;
+- Controle de entradas e saídas de estoque;
+- Rastreador por lote, série, nota fiscal e histórico;
+- Alertas de estoque mínimo e demanda prevista;
+- Autenticação com perfis de usuário;
+- Dashboard e relatórios consolidados;
+- Upload de imagens e arquivos relacionados aos produtos;
+- Ajustes manuais de estoque com controle de permissão;
+- Acesso em rede local para múltiplos usuários.
 
 ## Arquitetura do sistema
 A estrutura do projeto está dividida em camadas:
-Front-end: interface web em HTML, CSS e JavaScript;
-Back-end: API REST com Express;
-Persistência: banco SQLite;
-Segurança: autenticação JWT e controle por perfil;
-Armazenamento de arquivos: pasta uploads;
-Testes: validação da API via Node.js test runner.
+- Front-end: interface web em HTML, CSS e JavaScript;
+- Back-end: API REST com Express;
+- Persistência: banco SQLite;
+- Segurança: autenticação JWT e controle por perfil;
+- Armazenamento de arquivos: pasta uploads;
+- Testes: validação da API via Node.js test runner.
+
+## Estrutura do projeto
+text
+API-BikeCity/
+├── back-end/
+│   └── src/
+│       ├── app.js
+│       ├── server.js
+│       ├── configuracoes/
+│       ├── controladores/
+│       ├── repositorios/
+│       ├── rotas/
+│       ├── servicos/
+│       └── tests/
+├── front-end/
+│   ├── ativos/
+│   ├── js/
+│   ├── dashboard.html
+│   ├── estoque.html
+│   ├── login.html
+│   ├── produtos.html
+│   ├── relatorios.html
+│   └── usuarios.html
+├── uploads/
+├── package.json
+├── README.md
+├── README_REDE_LOCAL.md
+├── documentação.md
+├── iniciar-rede.bat
+├── liberar-porta-3000-firewall.bat
+├── database.sqlite
+└── Db_bikecity.sqlite.sql## Tecnologias utilizadas
+
+## Tecnologias utilizadas
+- Node.js
+- Express.js
+- SQLite
+- JWT
+- bcryptjs
+- Multer
+- CORS
+- HTML, CSS e JavaScript
+-Supertest
+
+## Requisitos
+-Node.js 18 ou superior
+-npm
+-Ambiente Windows recomendado para uso local e rede interna
