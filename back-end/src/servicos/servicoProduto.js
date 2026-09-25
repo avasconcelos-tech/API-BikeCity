@@ -14,6 +14,12 @@ function validarEstoqueMinimo(valor) {
 	return Number.isInteger(numero) && numero >= 0 ? numero : null;
 }
 
+function dimensoesObrigatorias(categoria, dimensoes) {
+	const categoriasGrandes = ['VEICULO'];
+	return categoriasGrandes.includes(String(categoria || '').trim().toUpperCase())
+		&& (dimensoes === undefined || dimensoes === null || String(dimensoes).trim() === '');
+}
+
 function buscarProdutoPorId(id) {
 	const produto = repositorioProduto.buscarProdutoPorId(id);
 	if (!produto) throw new ErroNegocio(404, 'Produto não encontrado');
@@ -43,8 +49,8 @@ function criarProduto(data) {
 	if (erroFornecedor) throw new ErroNegocio(400, erroFornecedor);
 	if (Number(data.custo) < 0) throw new ErroNegocio(400, 'Custo não pode ser negativo.');
 
-	if (['VEICULO', 'BICICLETA', 'PATINETE'].includes(String(data.categoria).toUpperCase()) && !data.dimensoes && data.categoria === 'PECA_GRANDE') {
-		throw new ErroNegocio(400, 'Dimensões são obrigatórias para peças grandes.');
+	if (dimensoesObrigatorias(data.categoria, data.dimensoes)) {
+		throw new ErroNegocio(400, 'Dimensões são obrigatórias para veículos.');
 	}
 
 	try {
@@ -56,9 +62,15 @@ function criarProduto(data) {
 }
 
 function atualizarProduto(id, dados) {
-	buscarProdutoPorId(id);
+	const produtoAtual = buscarProdutoPorId(id);
 	if (Object.hasOwn(dados, 'estoque_minimo') && validarEstoqueMinimo(dados.estoque_minimo) === null) {
 		throw new ErroNegocio(400, 'Estoque mínimo deve ser um número inteiro maior ou igual a 0.');
+	}
+	if (
+		(Object.hasOwn(dados, 'categoria') || Object.hasOwn(dados, 'dimensoes'))
+		&& dimensoesObrigatorias(dados.categoria ?? produtoAtual.categoria, dados.dimensoes ?? (Object.hasOwn(dados, 'dimensoes') ? dados.dimensoes : produtoAtual.dimensoes))
+	) {
+		throw new ErroNegocio(400, 'Dimensões são obrigatórias para veículos.');
 	}
 	if (Object.hasOwn(dados, 'fornecedor_id')) {
 		const erroFornecedor = validarFornecedorExiste(dados.fornecedor_id);

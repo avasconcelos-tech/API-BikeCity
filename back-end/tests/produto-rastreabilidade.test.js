@@ -8,6 +8,42 @@ const ErroNegocio = require('../src/erros/ErroNegocio');
 
 test.beforeEach(() => conexaoBanco.resetarBancoParaTestes());
 
+test('dimensões são obrigatórias para veículos no cadastro e ao alterar categoria ou dimensões', () => {
+  const dadosProduto = {
+    nome: 'Veículo sem dimensões',
+    codigo_interno: 'VEI-DIM-001',
+    categoria: 'VEICULO',
+    unidade_medida: 'UN',
+    localizacao_deposito: 'Setor A',
+    fornecedor_id: 1,
+    custo: 1000
+  };
+
+  assert.throws(
+    () => servicoProduto.criarProduto(dadosProduto),
+    (erro) => erro instanceof ErroNegocio && erro.status === 400 && /dimensões.*veículos/i.test(erro.message)
+  );
+
+  const veiculoValido = servicoProduto.criarProduto({ ...dadosProduto, dimensoes: '180x70x110 cm' });
+  assert.equal(veiculoValido.dimensoes, '180x70x110 cm');
+
+  const peca = servicoProduto.criarProduto({
+    ...dadosProduto,
+    nome: 'Peça estrutural',
+    codigo_interno: 'VEI-DIM-002',
+    categoria: 'PECA_ESTRUTURAL'
+  });
+  assert.equal(peca.dimensoes, null);
+  assert.throws(
+    () => servicoProduto.atualizarProduto(peca.id, { categoria: 'VEICULO' }),
+    (erro) => erro instanceof ErroNegocio && erro.status === 400
+  );
+  assert.throws(
+    () => servicoProduto.atualizarProduto(veiculoValido.id, { dimensoes: '  ' }),
+    (erro) => erro instanceof ErroNegocio && erro.status === 400
+  );
+});
+
 test('produto bateria cadastrado exige rastreabilidade na entrada', () => {
   const produto = servicoProduto.criarProduto({
     nome: 'Bateria cadastrada',

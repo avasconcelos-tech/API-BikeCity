@@ -738,6 +738,7 @@ GET /api/v1/produtos?incluirInativos=true
 * O estoque é alterado via movimentações.
 * Se `fornecedor_id` for informado, o sistema valida se ele existe no banco.
 * Se `estoque_minimo` não for fornecido, assume o valor padrão de `5`. Os alertas e o resumo usam o limite configurado em cada produto.
+* Para a categoria `VEICULO` (bicicletas e patinetes), `dimensoes` é obrigatório; a mesma regra se aplica ao alterar a categoria ou limpar as dimensões na edição.
 
 ### Body da Requisição
 
