@@ -9,6 +9,7 @@ router.get('/:id', authenticate, authorizePerfil('GERENTE'), controladorUsuario.
 router.post('/', authenticate, authorizePerfil('GERENTE'), controladorUsuario.criarUsuario);
 router.put('/:id', authenticate, authorizePerfil('GERENTE'), controladorUsuario.atualizarUsuario);
 router.delete('/:id', authenticate, authorizePerfil('GERENTE'), controladorUsuario.desativarUsuario);
+router.patch('/:id/ativar', authenticate, authorizePerfil('GERENTE'), controladorUsuario.reativarUsuario);
 router.patch('/me/senha', authenticate, controladorUsuario.trocarSenha);
 
 module.exports = router;

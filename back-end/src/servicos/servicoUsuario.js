@@ -21,6 +21,10 @@ function desativarUsuario(id) {
   return repositorio.desativarUsuario(id);
 }
 
+function reativarUsuario(id) {
+  return repositorio.reativarUsuario(id);
+}
+
 function trocarSenha(id, senhaAtual, novaSenha) {
   if (typeof senhaAtual !== 'string' || typeof novaSenha !== 'string') {
     return { statusCode: 400, payload: { status: 'erro', mensagem: 'As senhas são obrigatórias e devem ser textos.' } };
@@ -90,6 +94,7 @@ module.exports = {
   buscarUsuarioPorId,
   atualizarUsuario,
   desativarUsuario,
+  reativarUsuario,
   trocarSenha,
   criarUsuario
 };

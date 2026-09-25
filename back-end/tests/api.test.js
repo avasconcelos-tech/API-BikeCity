@@ -71,12 +71,24 @@ test('usuário pode atualizar seus dados, ser desativado e trocar a própria sen
 
   assert.equal(loginNovaSenha.status, 200);
 
+  const usuarioSecundario = await request(app)
+    .post('/api/v1/usuarios')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Usuário Temporário', email: 'temporario@teste.com', cargo: 'Estoquista', perfil: 'OPERACIONAL', senha: 'senha123' });
+  const usuarioId = usuarioSecundario.body.dados.id;
   const inativacao = await request(app)
-    .delete('/api/v1/usuarios/1')
+    .delete(`/api/v1/usuarios/${usuarioId}`)
     .set('Authorization', `Bearer ${token}`);
 
   assert.equal(inativacao.status, 200);
   assert.equal(inativacao.body.dados.ativo, false);
+
+  const reativacao = await request(app)
+    .patch(`/api/v1/usuarios/${usuarioId}/ativar`)
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(reativacao.status, 200);
+  assert.equal(reativacao.body.dados.ativo, true);
 });
 
 test('entrada de estoque exige dados de rastreabilidade corretos para baterias', async () => {

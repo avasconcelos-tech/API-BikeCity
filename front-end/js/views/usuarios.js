@@ -1,5 +1,11 @@
 import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
-import { getUsuarios, postUsuario, deleteUsuario } from '../api/services.js';
+import {
+  getUsuarios,
+  postUsuario,
+  putUsuario,
+  deleteUsuario,
+  reativarUsuario,
+} from '../api/services.js';
 import { habilitarMostrarSenha } from '../utilitarios/mostrarSenha.js';
 import { mostrarToast, configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
 if (!checarAutenticacao()) throw new Error('Não autenticado');
@@ -10,12 +16,13 @@ if (obterUsuarioLogado()?.perfil !== 'GERENTE') {
 }
 const $ = (id) => document.getElementById(id),
   modal = $('modal-usuario');
+let usuarioEmEdicao = null;
 async function carregar() {
   const r = await getUsuarios(true);
   $('tbody').innerHTML = (r.dados || [])
     .map(
       (u) =>
-        `<tr><td>${u.nome}</td><td>${u.email}</td><td>${u.cargo || '-'}</td><td>${u.perfil}</td><td>${u.ativo ? 'Ativo' : 'Inativo'}</td><td>${u.ativo && u.id !== obterUsuarioLogado().id ? `<button data-id="${u.id}" class="desativar">Desativar</button>` : '-'}</td></tr>`,
+        `<tr><td>${u.nome}</td><td>${u.email}</td><td>${u.cargo || '-'}</td><td>${u.perfil}</td><td>${u.ativo ? 'Ativo' : 'Inativo'}</td><td><button type="button" data-id="${u.id}" class="editar">Editar</button> ${u.ativo && u.id !== obterUsuarioLogado().id ? `<button type="button" data-id="${u.id}" class="desativar">Desativar</button>` : ''} ${!u.ativo ? `<button type="button" data-id="${u.id}" class="reativar">Reativar</button>` : ''}</td></tr>`,
     )
     .join('');
   document.querySelectorAll('.desativar').forEach(
@@ -35,8 +42,45 @@ async function carregar() {
         }
       }),
   );
+  document
+    .querySelectorAll('.editar')
+    .forEach((botao) =>
+      botao.addEventListener('click', () =>
+        abrirModalUsuario(
+          (r.dados || []).find((usuario) => usuario.id === Number(botao.dataset.id)),
+        ),
+      ),
+    );
+  document.querySelectorAll('.reativar').forEach((botao) =>
+    botao.addEventListener('click', async () => {
+      botao.disabled = true;
+      try {
+        await reativarUsuario(botao.dataset.id);
+        mostrarToast('Usuário reativado.');
+        await carregar();
+      } catch (err) {
+        mostrarToast(err.message || 'Não foi possível reativar o usuário.', 'erro');
+      } finally {
+        botao.disabled = false;
+      }
+    }),
+  );
 }
-$('novo').onclick = () => abrirModal(modal, 'nome');
+function abrirModalUsuario(usuario = null) {
+  usuarioEmEdicao = usuario;
+  $('titulo-modal-usuario').textContent = usuario ? 'Editar Usuário' : 'Novo Usuário';
+  $('nome').value = usuario?.nome || '';
+  $('email').value = usuario?.email || '';
+  $('cargo').value = usuario?.cargo || '';
+  $('perfil').value = usuario?.perfil || '';
+  $('senha').value = '';
+  $('senha').required = !usuario;
+  $('senha').placeholder = usuario
+    ? 'Deixe em branco para manter a senha'
+    : 'Digite uma senha com pelo menos 6 caracteres';
+  abrirModal(modal, 'nome');
+}
+$('novo').onclick = () => abrirModalUsuario();
 $('fechar').onclick = () => fecharModal(modal, 'novo');
 document
   .querySelectorAll('.btn-close')
@@ -47,15 +91,16 @@ $('form').onsubmit = async (e) => {
   const botao = e.target.querySelector('button[type="submit"]');
   botao.disabled = true;
   try {
-    const cargo = $('cargo').value;
-    await postUsuario({
+    const dados = {
       nome: $('nome').value,
       email: $('email').value,
-      cargo,
-      perfil: cargo,
-      senha: $('senha').value,
-    });
-    mostrarToast('Usuário cadastrado!');
+      cargo: $('cargo').value,
+      perfil: $('perfil').value,
+    };
+    if ($('senha').value) dados.senha = $('senha').value;
+    if (usuarioEmEdicao) await putUsuario(usuarioEmEdicao.id, dados);
+    else await postUsuario(dados);
+    mostrarToast(usuarioEmEdicao ? 'Usuário atualizado!' : 'Usuário cadastrado!');
     e.target.reset();
     fecharModal(modal, 'novo');
     carregar();
