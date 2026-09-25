@@ -3,6 +3,7 @@ import { apiFetch } from '../api/client.js';
 import { getAlertas, getNotificacoes, getProdutos, marcarAlertaLido } from '../api/services.js';
 import { formatarMoeda } from '../utilitarios/formatters.js';
 import { estaEmAlerta } from '../utilitarios/estoque.js';
+import { escaparHtml } from '../utilitarios/html.js';
 import { configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
@@ -18,7 +19,7 @@ function abrirProdutos(titulo, lista) {
     ? lista
         .map(
           (produto) =>
-            `<tr><td>${produto.nome}</td><td>${produto.categoria}</td><td>${produto.estoque_atual}</td><td>${produto.localizacao_deposito || '-'}</td></tr>`,
+            `<tr><td>${escaparHtml(produto.nome)}</td><td>${escaparHtml(produto.categoria)}</td><td>${escaparHtml(produto.estoque_atual)}</td><td>${escaparHtml(produto.localizacao_deposito || '-')}</td></tr>`,
         )
         .join('')
     : '<tr><td colspan="4">Nenhum produto encontrado.</td></tr>';
@@ -33,7 +34,7 @@ function abrirRelatorioEstoque() {
     ? produtos
         .map(
           (produto) =>
-            `<tr><td>${produto.nome}</td><td>${produto.estoque_atual}</td><td>${formatarMoeda(produto.custo || 0)}</td></tr>`,
+            `<tr><td>${escaparHtml(produto.nome)}</td><td>${escaparHtml(produto.estoque_atual)}</td><td>${escaparHtml(formatarMoeda(produto.custo || 0))}</td></tr>`,
         )
         .join('')
     : '<tr><td colspan="3">Nenhuma peça encontrada.</td></tr>';
@@ -52,14 +53,6 @@ function ativarCard(id, acao) {
       acao();
     }
   };
-}
-
-function escapeHtml(valor) {
-  return String(valor ?? '-').replace(
-    /[&<>"']/g,
-    (caractere) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[caractere],
-  );
 }
 
 function renderizarAlertas(alertas, notificacoes) {
@@ -86,7 +79,7 @@ function renderizarAlertas(alertas, notificacoes) {
     itens
       .map(
         (item) =>
-          `<article class="notification-item ${item.lido ? 'is-read' : ''}"><div><strong>${escapeHtml(item.titulo)}</strong><p>${escapeHtml(item.mensagem)}</p></div>${item.tipo === 'alerta' && !item.lido ? `<button type="button" class="btn-marcar-alerta" data-id="${item.id}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`,
+          `<article class="notification-item ${item.lido ? 'is-read' : ''}"><div><strong>${escaparHtml(item.titulo)}</strong><p>${escaparHtml(item.mensagem)}</p></div>${item.tipo === 'alerta' && !item.lido ? `<button type="button" class="btn-marcar-alerta" data-id="${escaparHtml(item.id)}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`,
       )
       .join('') || '<p>Nenhuma notificação registrada.</p>';
   lista.querySelectorAll('.btn-marcar-alerta').forEach((botao) =>

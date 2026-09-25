@@ -8,6 +8,7 @@ const repositorioProduto = require('../repositorios/repositorioProduto');
 const router = express.Router();
 
 router.get('/', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.listarProdutos);
+router.patch('/:id/reativar', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
 router.get('/:id', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.buscarProdutoPorId);
 router.post('/', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.criarProduto);
 router.put('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.atualizarProduto);

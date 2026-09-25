@@ -62,7 +62,7 @@ function listarAlertas(){return repositorioEstoque.listarAlertas();}
 function listarRastreabilidade(id=null){return repositorioEstoque.listarRastreabilidade(id);}
 
 function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numeroNotaFiscal, itens, body={}) {
-  const produto=repositorioProduto.buscarProdutoPorId(produtoId); if(!produto)return erro(404,'Produto não encontrado.');
+  const produto=repositorioProduto.buscarProdutoPorId(produtoId); if(!produto)return erro(404,'Produto não encontrado.'); if(!produto.ativo)return erro(400,'Produto inativo');
   const itensRastreaveis = Array.isArray(itens) && itens.length ? itens : (Array.isArray(body.itens_rastreaveis) ? body.itens_rastreaveis : []);
   const payload={...body,produto_id:produtoId,quantidade,numero_nota_fiscal:numeroNotaFiscal,numero_pedido_compra:body.numero_pedido_compra||body.numero_pedido,itens_rastreaveis:itensRastreaveis};
   const validacao=validarEntrada(produto,payload); if(validacao)return erro(400,validacao);
@@ -90,7 +90,7 @@ function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numero
 }
 
 function registrarSaida(produtoId,quantidade,destinatario,motivo,usuarioId,body={}) {
-  const p=repositorioProduto.buscarProdutoPorId(produtoId);if(!p)return erro(404,'Produto não encontrado.');
+  const p=repositorioProduto.buscarProdutoPorId(produtoId);if(!p)return erro(404,'Produto não encontrado.');if(!p.ativo)return erro(400,'Produto inativo');
   let e=quantidadePositiva(quantidade)||obrigatorio(destinatario,'destinatario')||obrigatorio(motivo,'motivo')||obrigatorio(body.numero_pedido_venda,'numero_pedido_venda');if(e)return erro(400,e);
   const n=Number(quantidade);if(n>p.estoque_atual)return erro(400,'Estoque insuficiente para a quantidade solicitada.');
   const novo=p.estoque_atual-n, agora=new Date().toISOString();

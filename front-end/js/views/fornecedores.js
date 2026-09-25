@@ -1,6 +1,7 @@
 import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
 import { getFornecedores, postFornecedor, putFornecedor } from '../api/services.js';
 import { mostrarToast } from '../utilitarios/ui.js';
+import { escaparHtml } from '../utilitarios/html.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
@@ -9,14 +10,6 @@ const usuario = obterUsuarioLogado();
 const podeEditar = ['ANALISTA', 'GERENTE'].includes(usuario?.perfil);
 let fornecedorEmEdicao = null;
 let fornecedores = [];
-
-function escapeHtml(valor) {
-  return String(valor ?? '-').replace(
-    /[&<>"']/g,
-    (caractere) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[caractere],
-  );
-}
 
 function fecharFormulario() {
   $('form-fornecedor').reset();
@@ -42,7 +35,7 @@ function renderizar() {
     fornecedores
       .map(
         (fornecedor) =>
-          `<tr><td>${escapeHtml(fornecedor.nome)}</td><td>${escapeHtml(fornecedor.cnpj)}</td><td>${escapeHtml(fornecedor.contato)}</td><td>${fornecedor.ativo ? 'Ativo' : 'Inativo'}</td><td>${podeEditar && fornecedor.ativo ? `<button type="button" class="btn-editar-fornecedor" data-id="${fornecedor.id}">Editar</button>` : '-'}</td></tr>`,
+          `<tr><td>${escaparHtml(fornecedor.nome)}</td><td>${escaparHtml(fornecedor.cnpj)}</td><td>${escaparHtml(fornecedor.contato)}</td><td>${fornecedor.ativo ? 'Ativo' : 'Inativo'}</td><td>${podeEditar && fornecedor.ativo ? `<button type="button" class="btn-editar-fornecedor" data-id="${escaparHtml(fornecedor.id)}">Editar</button>` : '-'}</td></tr>`,
       )
       .join('') || '<tr><td colspan="5">Nenhum fornecedor cadastrado.</td></tr>';
   document

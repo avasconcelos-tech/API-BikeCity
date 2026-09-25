@@ -10,6 +10,7 @@ import {
 import { apiFetch } from '../api/client.js';
 import { formatarData } from '../utilitarios/formatters.js';
 import { mostrarToast } from '../utilitarios/ui.js';
+import { escaparHtml } from '../utilitarios/html.js';
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 let produtos = [];
 let historico = [];
@@ -30,7 +31,10 @@ function preencherProdutos(id) {
   s.innerHTML =
     '<option value="">Selecione...</option>' +
     produtos
-      .map((p) => `<option value="${p.id}">${p.nome} — estoque: ${p.estoque_atual}</option>`)
+      .map(
+        (p) =>
+          `<option value="${escaparHtml(p.id)}">${escaparHtml(p.nome)} — estoque: ${escaparHtml(p.estoque_atual)}</option>`,
+      )
       .join('');
   if ([...s.options].some((option) => option.value === valorAtual)) s.value = valorAtual;
 }
@@ -144,7 +148,7 @@ async function carregarRastreabilidadeSaida() {
     try {
       const resposta = await getRastreabilidade(produto.id);
       const itens = (resposta.dados || []).filter((item) => item.status === 'EM_ESTOQUE');
-      box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis devolvidos</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_devolucao" value="${item.id}"><span>${item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
+      box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis devolvidos</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_devolucao" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
       const quantidade = Number($('qtd-devolucao').value || 1);
       box.querySelectorAll('input').forEach((input) =>
         input.addEventListener('change', () => {
@@ -152,7 +156,7 @@ async function carregarRastreabilidadeSaida() {
         }),
       );
     } catch (erro) {
-      box.innerHTML = `<p class="form-error">${erro.message || 'Não foi possível carregar os itens rastreáveis.'}</p>`;
+      box.innerHTML = `<p class="form-error">${escaparHtml(erro.message || 'Não foi possível carregar os itens rastreáveis.')}</p>`;
     }
   }
   const tipo = tipoRastreabilidade(produto);
@@ -163,7 +167,7 @@ async function carregarRastreabilidadeSaida() {
   try {
     const resposta = await getRastreabilidade(produto.id);
     const itens = (resposta.dados || []).filter((item) => item.status === 'EM_ESTOQUE');
-    box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis disponíveis</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_saida" value="${item.id}"><span>${item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`} · ${item.status}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
+    box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis disponíveis</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_saida" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)} · ${escaparHtml(item.status)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
     const quantidade = Number($('qtd-saida').value || 1);
     box.querySelectorAll('input').forEach((input) =>
       input.addEventListener('change', () => {
@@ -172,7 +176,7 @@ async function carregarRastreabilidadeSaida() {
       }),
     );
   } catch (erro) {
-    box.innerHTML = `<p class="form-error">${erro.message || 'Não foi possível carregar os itens rastreáveis.'}</p>`;
+    box.innerHTML = `<p class="form-error">${escaparHtml(erro.message || 'Não foi possível carregar os itens rastreáveis.')}</p>`;
   }
 }
 $('form-saida')?.addEventListener('submit', async (e) => {
@@ -325,7 +329,7 @@ function renderHistorico() {
     pagina
       .map(
         (m) =>
-          `<tr><td>${m.id}</td><td>${m.produto_nome || m.produto_id}</td><td>${tipoMovimentacao(m.tipo)}</td><td>${m.quantidade}</td><td>${alteracaoMovimentacao(m)}</td><td>${m.destinatario || '-'}</td><td>${m.motivo || '-'}</td><td>${formatarData(m.data_movimentacao)}</td></tr>`,
+          `<tr><td>${escaparHtml(m.id)}</td><td>${escaparHtml(m.produto_nome || m.produto_id)}</td><td>${escaparHtml(tipoMovimentacao(m.tipo))}</td><td>${escaparHtml(m.quantidade)}</td><td>${escaparHtml(alteracaoMovimentacao(m))}</td><td>${escaparHtml(m.destinatario || '-')}</td><td>${escaparHtml(m.motivo || '-')}</td><td>${escaparHtml(formatarData(m.data_movimentacao))}</td></tr>`,
       )
       .join('') || '<tr><td colspan="8">Nenhuma movimentação encontrada.</td></tr>';
   const totalPaginas = Math.max(1, Math.ceil(filtrado.length / ITENS_POR_PAGINA));
@@ -355,19 +359,19 @@ async function carregarHistorico() {
     const filtroProduto = $('filtro-produto-historico');
     if (filtroProduto && filtroProduto.options.length === 1)
       filtroProduto.innerHTML += produtos
-        .map((p) => `<option value="${p.id}">${p.nome}</option>`)
+        .map((p) => `<option value="${escaparHtml(p.id)}">${escaparHtml(p.nome)}</option>`)
         .join('');
     renderHistorico();
   } catch (e) {
     $('tbody-estoque').innerHTML =
-      `<tr><td colspan="8">${e.message || 'Não foi possível carregar o histórico.'}</td></tr>`;
+      `<tr><td colspan="8">${escaparHtml(e.message || 'Não foi possível carregar o histórico.')}</td></tr>`;
   }
 }
 async function carregarFornecedores() {
   try {
     const r = await apiFetch('/api/v1/fornecedores');
     $('fornecedor-entrada').innerHTML = (r.dados || [])
-      .map((f) => `<option value="${f.id}">${f.nome}</option>`)
+      .map((f) => `<option value="${escaparHtml(f.id)}">${escaparHtml(f.nome)}</option>`)
       .join('');
   } catch {}
 }
@@ -384,7 +388,7 @@ $('btn-buscar-codigo')?.addEventListener('click', async () => {
     const r = await apiFetch(`/api/v1/estoque/buscar-codigo/${encodeURIComponent(c)}`);
     const p = r.dados;
     $('resultado-codigo').innerHTML =
-      `<div class="card"><strong>${p.nome}</strong><br>Código: ${p.codigo_interno}<br>Estoque: ${p.estoque_atual}<br>Localização: ${p.localizacao_deposito || '-'}</div>`;
+      `<div class="card"><strong>${escaparHtml(p.nome)}</strong><br>Código: ${escaparHtml(p.codigo_interno)}<br>Estoque: ${escaparHtml(p.estoque_atual)}<br>Localização: ${escaparHtml(p.localizacao_deposito || '-')}</div>`;
   } catch (e) {
     $('resultado-codigo').textContent = e.message;
   }
@@ -405,7 +409,7 @@ $('btn-buscar-rastreabilidade')?.addEventListener('click', async () => {
       resultados
         .map(
           (item) =>
-            `<div class="card trace-result"><strong>${item.produto_nome || `Produto ${item.produto_id}`}</strong><br>Identificador: ${item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`}<br>Status: ${item.status}<br>Localização: ${item.localizacao || '-'}<br>Validade: ${item.data_validade ? formatarData(item.data_validade) : '-'}</div>`,
+            `<div class="card trace-result"><strong>${escaparHtml(item.produto_nome || `Produto ${item.produto_id}`)}</strong><br>Identificador: ${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)}<br>Status: ${escaparHtml(item.status)}<br>Localização: ${escaparHtml(item.localizacao || '-')}<br>Validade: ${escaparHtml(item.data_validade ? formatarData(item.data_validade) : '-')}</div>`,
         )
         .join('') || '<p>Nenhum item rastreável encontrado.</p>';
   } catch (erro) {

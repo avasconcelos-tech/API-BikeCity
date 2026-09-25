@@ -2,10 +2,13 @@ import { checarAutenticacao } from '../utilitarios/auth.js';
 import { getRelatorio } from '../api/services.js';
 import { formatarData } from '../utilitarios/formatters.js';
 import { estaEmAlerta } from '../utilitarios/estoque.js';
+import { escaparHtml } from '../utilitarios/html.js';
+import { mostrarToast } from '../utilitarios/ui.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
+const texto = (valor) => escaparHtml(valor ?? '-');
 const resposta = await getRelatorio().catch((erro) => {
   mostrarToast(erro.message || 'Não foi possível carregar o relatório.', 'erro');
   return { dados: {} };
@@ -20,14 +23,14 @@ $('r-produtos').textContent = estoque.length;
 $('tbody-relatorio').innerHTML = estoque
   .map((produto) => {
     const alerta = estaEmAlerta(produto);
-    return `<tr><td>${produto.nome}</td><td>${produto.categoria}</td><td>${produto.estoque_atual}</td><td>R$ ${Number(
+    return `<tr><td>${texto(produto.nome)}</td><td>${texto(produto.categoria)}</td><td>${texto(produto.estoque_atual)}</td><td>R$ ${Number(
       produto.custo || 0,
     )
       .toFixed(2)
       .replace(
         '.',
         ',',
-      )}</td><td>${produto.localizacao_deposito || '-'}</td><td>${alerta ? 'Baixo' : 'Normal'}</td></tr>`;
+      )}</td><td>${texto(produto.localizacao_deposito || '-')}</td><td>${alerta ? 'Baixo' : 'Normal'}</td></tr>`;
   })
   .join('');
 $('r-movs').textContent = movimentacoes.length;
@@ -40,12 +43,6 @@ const dentroDoPeriodo = (valor, inicio, fim) => {
   if (fim && data > new Date(`${fim}T23:59:59.999`)) return false;
   return true;
 };
-const texto = (valor) =>
-  String(valor ?? '-').replace(
-    /[&<>"']/g,
-    (caractere) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[caractere],
-  );
 const tipoMovimentacao = (tipo) =>
   ({
     ENTRADA: 'Entrada',

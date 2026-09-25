@@ -8,6 +8,7 @@ import {
 } from '../api/services.js';
 import { habilitarMostrarSenha } from '../utilitarios/mostrarSenha.js';
 import { mostrarToast, configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
+import { escaparHtml } from '../utilitarios/html.js';
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 if (obterUsuarioLogado()?.perfil !== 'GERENTE') {
   mostrarToast('Apenas gerentes podem gerenciar usuários.', 'erro');
@@ -22,7 +23,7 @@ async function carregar() {
   $('tbody').innerHTML = (r.dados || [])
     .map(
       (u) =>
-        `<tr><td>${u.nome}</td><td>${u.email}</td><td>${u.cargo || '-'}</td><td>${u.perfil}</td><td>${u.ativo ? 'Ativo' : 'Inativo'}</td><td><button type="button" data-id="${u.id}" class="editar">Editar</button> ${u.ativo && u.id !== obterUsuarioLogado().id ? `<button type="button" data-id="${u.id}" class="desativar">Desativar</button>` : ''} ${!u.ativo ? `<button type="button" data-id="${u.id}" class="reativar">Reativar</button>` : ''}</td></tr>`,
+        `<tr><td>${escaparHtml(u.nome)}</td><td>${escaparHtml(u.email)}</td><td>${escaparHtml(u.cargo || '-')}</td><td>${escaparHtml(u.perfil)}</td><td>${u.ativo ? 'Ativo' : 'Inativo'}</td><td><button type="button" data-id="${escaparHtml(u.id)}" class="editar">Editar</button> ${u.ativo && u.id !== obterUsuarioLogado().id ? `<button type="button" data-id="${escaparHtml(u.id)}" class="desativar">Desativar</button>` : ''} ${!u.ativo ? `<button type="button" data-id="${escaparHtml(u.id)}" class="reativar">Reativar</button>` : ''}</td></tr>`,
     )
     .join('');
   document.querySelectorAll('.desativar').forEach(

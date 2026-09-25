@@ -1,6 +1,7 @@
 import { obterUsuarioLogado, removerToken } from './auth.js';
 import { trocarMinhaSenha } from '../api/services.js';
 import { mostrarToast, configurarModal, abrirModal, fecharModal } from './ui.js';
+import { escaparHtml } from './html.js';
 
 const paginas = [
   ['dashboard.html', 'Dashboard'],
@@ -29,7 +30,7 @@ function criarCabecalho(main) {
   const usuario = obterUsuarioLogado();
   const cabecalho = document.createElement('div');
   cabecalho.className = 'app-header';
-  cabecalho.innerHTML = `<button id="btn-minha-conta" class="account-link" type="button">${usuario?.nome || usuario?.email || 'Minha conta'}</button><button id="btn-logout" class="btn-danger" type="button">Sair</button>`;
+  cabecalho.innerHTML = `<button id="btn-minha-conta" class="account-link" type="button">${escaparHtml(usuario?.nome || usuario?.email || 'Minha conta')}</button><button id="btn-logout" class="btn-danger" type="button">Sair</button>`;
   main.prepend(cabecalho);
   criarModalConta(cabecalho.querySelector('#btn-minha-conta'));
   cabecalho.querySelector('#btn-logout').addEventListener('click', () => {

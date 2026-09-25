@@ -10,6 +10,7 @@ import {
 } from '../api/services.js';
 import { mostrarToast, configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
 import { estaEmAlerta } from '../utilitarios/estoque.js';
+import { escaparHtml } from '../utilitarios/html.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
@@ -59,7 +60,10 @@ async function carregarFornecedores() {
   $('fornecedor_id').innerHTML =
     '<option value="">Selecione...</option>' +
     (resposta.dados || [])
-      .map((fornecedor) => `<option value="${fornecedor.id}">${fornecedor.nome}</option>`)
+      .map(
+        (fornecedor) =>
+          `<option value="${escaparHtml(fornecedor.id)}">${escaparHtml(fornecedor.nome)}</option>`,
+      )
       .join('');
 }
 
@@ -80,14 +84,14 @@ function renderizarProdutos() {
     lista
       .map(
         (produto) =>
-          `<tr><td>${produto.id}</td><td>${produto.codigo_interno || '-'}</td><td>${produto.nome}</td><td>${produto.categoria}</td><td>${produto.localizacao_deposito || '-'}</td><td>R$ ${Number(
+          `<tr><td>${escaparHtml(produto.id)}</td><td>${escaparHtml(produto.codigo_interno || '-')}</td><td>${escaparHtml(produto.nome)}</td><td>${escaparHtml(produto.categoria)}</td><td>${escaparHtml(produto.localizacao_deposito || '-')}</td><td>R$ ${Number(
             produto.custo || 0,
           )
             .toFixed(2)
             .replace(
               '.',
               ',',
-            )}</td><td>${produto.estoque_atual}</td><td>${produto.ativo ? (estaEmAlerta(produto) ? 'Baixo' : 'Normal') : 'Inativo'}</td>${podeEditar ? `<td><button type="button" class="btn-editar-produto" data-id="${produto.id}">Editar</button>${produto.ativo ? ` <button type="button" class="btn-inativar-produto" data-id="${produto.id}">Inativar</button>` : ` <button type="button" class="btn-reativar-produto" data-id="${produto.id}">Reativar</button>`}</td>` : ''}</tr>`,
+            )}</td><td>${escaparHtml(produto.estoque_atual)}</td><td>${produto.ativo ? (estaEmAlerta(produto) ? 'Baixo' : 'Normal') : 'Inativo'}</td>${podeEditar ? `<td><button type="button" class="btn-editar-produto" data-id="${escaparHtml(produto.id)}">Editar</button>${produto.ativo ? ` <button type="button" class="btn-inativar-produto" data-id="${escaparHtml(produto.id)}">Inativar</button>` : ` <button type="button" class="btn-reativar-produto" data-id="${escaparHtml(produto.id)}">Reativar</button>`}</td>` : ''}</tr>`,
       )
       .join('') || `<tr><td colspan="${podeEditar ? 9 : 8}">Nenhum produto encontrado.</td></tr>`;
   document
