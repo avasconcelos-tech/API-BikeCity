@@ -202,8 +202,21 @@ if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
   seedDadosIniciais();
 }
 
+function executarEmTransacao(fn) {
+  db.exec('BEGIN');
+  try {
+    const resultado = fn();
+    db.exec('COMMIT');
+    return resultado;
+  } catch (erro) {
+    db.exec('ROLLBACK');
+    throw erro;
+  }
+}
+
 const conexaoInstancia = {
   getDb: () => db,
+  executarEmTransacao,
   resetarBancoParaTestes: () => {
     db.exec(`DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`);
     if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
