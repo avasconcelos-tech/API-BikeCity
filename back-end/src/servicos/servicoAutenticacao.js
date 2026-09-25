@@ -30,10 +30,15 @@ function authorizePerfil(...perfis) {
 }
 
 function createToken(usuario) {
-  return jwt.sign({ id: usuario.id, perfil: usuario.perfil, email: usuario.email }, SECRET, { expiresIn: '30m' });
+  return jwt.sign({ id: usuario.id, nome: usuario.nome, perfil: usuario.perfil, email: usuario.email }, SECRET, { expiresIn: '30m' });
 }
 
 function loginUser(email, senha) {
+  if (typeof email !== 'string' || !email.trim() || typeof senha !== 'string') {
+    return { statusCode: 400, payload: { status: 'erro', mensagem: 'E-mail e senha são obrigatórios e devem ser textos.' } };
+  }
+
+  email = email.trim().toLowerCase();
   const usuario = repositorio.buscarUsuarioPorEmail(email);
 
   if (!usuario) {

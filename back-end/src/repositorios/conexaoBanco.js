@@ -16,6 +16,21 @@ function adicionarColunaSeFaltar(tabela, coluna, definicao) {
   }
 }
 
+function corrigirProdutosComColunasTrocadas() {
+  const resultado = db.prepare(`
+    UPDATE produtos
+    SET dimensoes = NULL,
+        estado_montagem = dimensoes,
+        tipo_rastreabilidade = estado_montagem,
+        demanda_prevista = CAST(tipo_rastreabilidade AS INTEGER)
+    WHERE demanda_prevista IS NULL
+      AND tipo_rastreabilidade GLOB '[0-9]*'
+      AND estado_montagem IN ('NENHUMA', 'BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA')
+      AND dimensoes IN ('NAO_APLICA', 'MONTADO', 'DESMONTADO')
+  `).run();
+  return resultado.changes;
+}
+
 function criarEstrutura() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -159,6 +174,7 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('auditoria', 'novo_valor', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'justificativa', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'data', 'TEXT');
+  corrigirProdutosComColunasTrocadas();
 }
 
 function seedDadosIniciais() {

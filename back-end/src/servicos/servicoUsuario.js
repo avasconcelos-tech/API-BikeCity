@@ -10,7 +10,11 @@ function buscarUsuarioPorId(id) {
 }
 
 function atualizarUsuario(id, dadosParaAtualizar) {
-  return repositorio.atualizarUsuario(id, dadosParaAtualizar);
+  const dados = { ...dadosParaAtualizar };
+  if (typeof dados.email === 'string') {
+    dados.email = dados.email.trim().toLowerCase();
+  }
+  return repositorio.atualizarUsuario(id, dados);
 }
 
 function desativarUsuario(id) {
@@ -18,6 +22,10 @@ function desativarUsuario(id) {
 }
 
 function trocarSenha(id, senhaAtual, novaSenha) {
+  if (typeof senhaAtual !== 'string' || typeof novaSenha !== 'string') {
+    return { statusCode: 400, payload: { status: 'erro', mensagem: 'As senhas são obrigatórias e devem ser textos.' } };
+  }
+
   const usuario = repositorio.buscarUsuarioPorId(id);
   if (!usuario) {
     return { statusCode: 404, payload: { status: 'erro', mensagem: 'Usuário não encontrado' } };
@@ -46,14 +54,19 @@ function trocarSenha(id, senhaAtual, novaSenha) {
 }
 
 function criarUsuario(data) {
-  if (!data.senha || String(data.senha).trim().length < 6) {
+  if (typeof data.senha !== 'string' || data.senha.trim().length < 6) {
     return {
       statusCode: 400,
       payload: { status: 'erro', mensagem: 'A senha deve ter pelo menos 6 caracteres' }
     };
   }
 
-  const existe = repositorio.buscarUsuarioPorEmail(data.email);
+  const dados = {
+    ...data,
+    email: typeof data.email === 'string' ? data.email.trim().toLowerCase() : data.email
+  };
+
+  const existe = repositorio.buscarUsuarioPorEmail(dados.email);
   if (existe) {
     return {
       statusCode: 409,
@@ -61,7 +74,7 @@ function criarUsuario(data) {
     };
   }
 
-  const usuario = repositorio.criarUsuario(data);
+  const usuario = repositorio.criarUsuario(dados);
   return {
     statusCode: 201,
     payload: {
