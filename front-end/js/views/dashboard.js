@@ -2,16 +2,13 @@ import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
 import { apiFetch } from '../api/client.js';
 import { getAlertas, getNotificacoes, getProdutos, marcarAlertaLido } from '../api/services.js';
 import { formatarMoeda } from '../utilitarios/formatters.js';
+import { estaEmAlerta } from '../utilitarios/estoque.js';
 import { configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
 let produtos = [];
-
-function estoqueBaixo(produto) {
-  return Number(produto.estoque_atual || 0) <= 5;
-}
 
 function abrirProdutos(titulo, lista) {
   $('titulo-produtos-dashboard').textContent = titulo;
@@ -119,7 +116,7 @@ async function carregar() {
     ]);
     produtos = respostaProdutos.dados || [];
     const dados = resumo.dados;
-    const produtosEmAlerta = produtos.filter(estoqueBaixo);
+    const produtosEmAlerta = produtos.filter(estaEmAlerta);
 
     $('total-produtos').textContent = dados.total_produtos || 0;
     $('estoque-critico').textContent = dados.estoque_critico || 0;

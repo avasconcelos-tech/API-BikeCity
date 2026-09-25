@@ -13,6 +13,7 @@ router.get('/:id', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GER
 router.post('/', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.criarProduto);
 router.put('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.atualizarProduto);
 router.delete('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.inativarProduto);
+router.patch('/:id/ativar', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
 
 router.post('/:id/imagem', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), (req, res) => {
   const produtoId = Number(req.params.id);

@@ -1,20 +1,20 @@
 import { checarAutenticacao } from '../utilitarios/auth.js';
 import { getRelatorio } from '../api/services.js';
 import { formatarData } from '../utilitarios/formatters.js';
+import { estaEmAlerta } from '../utilitarios/estoque.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
-const resposta = await getRelatorio();
+const resposta = await getRelatorio().catch((erro) => {
+  mostrarToast(erro.message || 'Não foi possível carregar o relatório.', 'erro');
+  return { dados: {} };
+});
 const dados = resposta.dados;
 const estoque = dados.estoque || [];
 const movimentacoes = dados.movimentacoes || [];
 const devolucoes = dados.devolucoes || [];
 const alertas = dados.alertas || [];
-
-function estaEmAlerta(produto) {
-  return Number(produto.estoque_atual || 0) <= 5;
-}
 
 $('r-produtos').textContent = estoque.length;
 $('tbody-relatorio').innerHTML = estoque

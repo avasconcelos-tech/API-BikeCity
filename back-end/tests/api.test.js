@@ -201,11 +201,14 @@ test('produto específico, atualização e inativação funcionam com lista filt
       localizacao_deposito: 'Setor Z',
       custo: 75,
       estoque_minimo: 2,
+      demanda_prevista: 18,
       estado_montagem: 'NAO_APLICA'
     });
 
   assert.equal(atualizacao.status, 200);
   assert.equal(atualizacao.body.dados.nome, 'Peça A Editada');
+  assert.equal(atualizacao.body.dados.estoque_minimo, 2);
+  assert.equal(atualizacao.body.dados.demanda_prevista, 18);
 
   const inativacao = await request(app)
     .delete('/api/v1/produtos/2')
@@ -227,6 +230,13 @@ test('produto específico, atualização e inativação funcionam com lista filt
 
   assert.equal(listaComInativos.status, 200);
   assert.ok(listaComInativos.body.dados.some((produto) => produto.id === 2 && produto.ativo === false));
+
+  const reativacao = await request(app)
+    .patch('/api/v1/produtos/2/ativar')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(reativacao.status, 200);
+  assert.equal(reativacao.body.dados.ativo, true);
 });
 
 test('produtos inativos não recebem movimentações de estoque e só podem ser reativados explicitamente', async () => {

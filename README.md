@@ -21,3 +21,24 @@ evitar falhas na reposição de produtos;
 manter a operação segura por perfil de acesso;
 reduzir erros em entradas e saídas de mercadorias.
 O BikeCity organiza esses processos em uma solução única, oferecendo rastreabilidade e visibilidade para operação e gestão.
+
+## Funcionalidades principais
+- Cadastro e consulta de produtos;
+- Gestão de fornecedores;
+- Controle de entradas e saídas de estoque;
+- Rastreador por lote, série, nota fiscal e histórico;
+- Alertas de estoque mínimo e demanda prevista;
+- Autenticação com perfis de usuário;
+- Dashboard e relatórios consolidados;
+- Upload de imagens e arquivos relacionados aos produtos;
+- Ajustes manuais de estoque com controle de permissão;
+- Acesso em rede local para múltiplos usuários.
+
+## Arquitetura do sistema
+A estrutura do projeto está dividida em camadas:
+Front-end: interface web em HTML, CSS e JavaScript;
+Back-end: API REST com Express;
+Persistência: banco SQLite;
+Segurança: autenticação JWT e controle por perfil;
+Armazenamento de arquivos: pasta uploads;
+Testes: validação da API via Node.js test runner.
