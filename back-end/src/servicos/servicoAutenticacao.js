@@ -13,7 +13,19 @@ function authenticate(req, res, next) {
 
   try {
     const payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
-    req.user = payload;
+    const usuario = repositorio.buscarUsuarioPorId(payload.id);
+    if (!usuario || !usuario.ativo) {
+      return res.status(401).json({ status: 'erro', mensagem: 'Usuário inválido ou inativo' });
+    }
+
+    req.user = {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      perfil: usuario.perfil,
+      cargo: usuario.cargo,
+      ativo: usuario.ativo
+    };
     return next();
   } catch (error) {
     return res.status(401).json({ status: 'erro', mensagem: 'Token inválido' });

@@ -198,13 +198,17 @@ function seedDadosIniciais() {
 }
 
 criarEstrutura();
-seedDadosIniciais();
+if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+  seedDadosIniciais();
+}
 
 const conexaoInstancia = {
   getDb: () => db,
   resetarBancoParaTestes: () => {
     db.exec(`DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`);
-    seedDadosIniciais();
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+      seedDadosIniciais();
+    }
   }
 };
 
