@@ -16,11 +16,6 @@ function buscarUsuarioPorId(req, res) {
 }
 
 function atualizarUsuario(req, res) {
-  const usuario = servicoUsuario.buscarUsuarioPorId(req.params.id);
-  if (!usuario) {
-    return res.status(404).json({ status: 'erro', mensagem: 'Usuário não encontrado' });
-  }
-
   const camposPermitidos = ['nome', 'email', 'cargo', 'perfil'];
   const dadosParaAtualizar = {};
 
@@ -30,30 +25,28 @@ function atualizarUsuario(req, res) {
     }
   }
 
-  const usuarioAtualizado = servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário atualizado com sucesso', dados: usuarioAtualizado });
+  const resultado = servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
+  return res.status(resultado.statusCode).json(resultado.payload);
 }
 
 function desativarUsuario(req, res) {
-  const usuario = servicoUsuario.buscarUsuarioPorId(req.params.id);
-  if (!usuario) {
-    return res.status(404).json({ status: 'erro', mensagem: 'Usuário não encontrado' });
-  }
-
-  const usuarioDesativado = servicoUsuario.desativarUsuario(req.params.id);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: usuarioDesativado });
+  const resultado = servicoUsuario.desativarUsuario(req.params.id, req.user.id);
+  return res.status(resultado.statusCode).json(resultado.payload);
 }
 
 function reativarUsuario(req, res) {
-  const usuario = servicoUsuario.buscarUsuarioPorId(req.params.id);
-  if (!usuario) return res.status(404).json({ status: 'erro', mensagem: 'Usuário não encontrado' });
-  const usuarioReativado = servicoUsuario.reativarUsuario(req.params.id);
-  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: usuarioReativado });
+  const resultado = servicoUsuario.reativarUsuario(req.params.id);
+  return res.status(resultado.statusCode).json(resultado.payload);
 }
 
 function trocarSenha(req, res) {
   const usuarioId = req.user.id;
-  const resultado = servicoUsuario.trocarSenha(usuarioId, req.body.senhaAtual, req.body.novaSenha);
+  const resultado = servicoUsuario.trocarSenha(usuarioId, req.body?.senhaAtual, req.body?.novaSenha);
+  return res.status(resultado.statusCode).json(resultado.payload);
+}
+
+function redefinirSenha(req, res) {
+  const resultado = servicoUsuario.redefinirSenha(req.params.id, req.body?.novaSenha, req.user.id);
   return res.status(resultado.statusCode).json(resultado.payload);
 }
 
@@ -69,5 +62,6 @@ module.exports = {
   desativarUsuario,
   reativarUsuario,
   trocarSenha,
+  redefinirSenha,
   criarUsuario
 };

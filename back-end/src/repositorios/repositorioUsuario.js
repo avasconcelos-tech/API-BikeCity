@@ -41,29 +41,45 @@ function atualizarStatusLogin(email, tentativasFalhas, bloqueadoUntil) {
 }
 
 function atualizarUsuario(id, dadosParaAtualizar) {
-  const campos = [];
-  const valores = [];
-
-  const camposPermitidos = ['nome', 'email', 'cargo', 'perfil'];
-  for (const campo of camposPermitidos) {
-    if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, campo)) {
-      campos.push(`${campo} = ?`);
-      valores.push(dadosParaAtualizar[campo]);
+  return conexaoBanco.executarEmTransacao(() => {
+    const usuarioAtual = buscarUsuarioPorId(id);
+    if (
+      usuarioAtual?.ativo &&
+      usuarioAtual.perfil === 'GERENTE' &&
+      dadosParaAtualizar.perfil &&
+      dadosParaAtualizar.perfil !== 'GERENTE'
+    ) {
+      const { total } = db.prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?').get('GERENTE');
+      if (total <= 1) return { ultimoGerenteProtegido: true };
     }
-  }
 
-  if (!campos.length) {
-    return buscarUsuarioPorId(id);
-  }
+    const campos = [];
+    const valores = [];
+    for (const campo of ['nome', 'email', 'cargo', 'perfil']) {
+      if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, campo)) {
+        campos.push(`${campo} = ?`);
+        valores.push(dadosParaAtualizar[campo]);
+      }
+    }
 
-  valores.push(Number(id));
-  db.prepare(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`).run(...valores);
-  return buscarUsuarioPorId(id);
+    if (campos.length) {
+      valores.push(Number(id));
+      db.prepare(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`).run(...valores);
+    }
+    return { usuario: buscarUsuarioPorId(id) };
+  });
 }
 
 function desativarUsuario(id) {
-  db.prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?').run(Number(id));
-  return buscarUsuarioPorId(id);
+  return conexaoBanco.executarEmTransacao(() => {
+    const usuario = buscarUsuarioPorId(id);
+    if (usuario?.ativo && usuario.perfil === 'GERENTE') {
+      const { total } = db.prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?').get('GERENTE');
+      if (total <= 1) return { ultimoGerenteProtegido: true };
+    }
+    db.prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?').run(Number(id));
+    return { usuario: buscarUsuarioPorId(id) };
+  });
 }
 
 function reativarUsuario(id) {
@@ -72,7 +88,7 @@ function reativarUsuario(id) {
 }
 
 function atualizarSenha(id, novaSenhaHash) {
-  db.prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?').run(novaSenhaHash, Number(id));
+  db.prepare('UPDATE usuarios SET senha_hash = ?, tentativas_falhas = 0, bloqueado_until = NULL WHERE id = ?').run(novaSenhaHash, Number(id));
   return buscarUsuarioPorId(id);
 }
 
