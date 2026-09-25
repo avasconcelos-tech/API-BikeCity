@@ -1,27 +1,20 @@
-const conexaoBanco = require('./conexaoBanco');
+const banco = require('./conexaoBanco');
 const bcrypt = require('bcryptjs');
 
-const db = conexaoBanco.obterBanco();
-
-function listarUsuarios(incluirInativos = false) {
-  const query = incluirInativos
-    ? 'SELECT * FROM usuarios ORDER BY id'
-    : 'SELECT * FROM usuarios WHERE ativo = 1 ORDER BY id';
-  return db
-    .prepare(query)
-    .all()
-    .map((usuario) => ({
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      cargo: usuario.cargo,
-      perfil: usuario.perfil,
-      ativo: Boolean(usuario.ativo),
-    }));
+async function listarUsuarios(incluirInativos = false) {
+  const filtro = incluirInativos ? '' : ' WHERE ativo = 1';
+  const usuarios = await banco.consultar(`SELECT * FROM usuarios${filtro} ORDER BY id`);
+  return usuarios.map((usuario) => ({
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    cargo: usuario.cargo,
+    perfil: usuario.perfil,
+    ativo: Boolean(usuario.ativo),
+  }));
 }
 
-function buscarUsuarioPorId(id) {
-  const usuario = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(Number(id));
+function mapearUsuario(usuario) {
   if (!usuario) return null;
   return {
     ...usuario,
@@ -30,37 +23,37 @@ function buscarUsuarioPorId(id) {
   };
 }
 
-function buscarUsuarioPorEmail(email) {
-  const usuario = db.prepare('SELECT * FROM usuarios WHERE email = ?').get(email);
-  if (!usuario) return null;
-  return {
-    ...usuario,
-    ativo: Boolean(usuario.ativo),
-    bloqueado_until: usuario.bloqueado_until ? new Date(usuario.bloqueado_until) : null,
-  };
+async function buscarUsuarioPorId(id) {
+  const [usuario] = await banco.consultar('SELECT * FROM usuarios WHERE id = ?', [Number(id)]);
+  return mapearUsuario(usuario);
 }
 
-function atualizarStatusLogin(email, tentativasFalhas, bloqueadoUntil) {
-  db.prepare('UPDATE usuarios SET tentativas_falhas = ?, bloqueado_until = ? WHERE email = ?').run(
-    tentativasFalhas,
-    bloqueadoUntil,
-    email,
+async function buscarUsuarioPorEmail(email) {
+  const [usuario] = await banco.consultar('SELECT * FROM usuarios WHERE email = ?', [email]);
+  return mapearUsuario(usuario);
+}
+
+async function atualizarStatusLogin(email, tentativasFalhas, bloqueadoUntil) {
+  await banco.executar(
+    'UPDATE usuarios SET tentativas_falhas = ?, bloqueado_until = ? WHERE email = ?',
+    [tentativasFalhas, bloqueadoUntil, email],
   );
   return buscarUsuarioPorEmail(email);
 }
 
-function atualizarUsuario(id, dadosParaAtualizar) {
-  return conexaoBanco.executarEmTransacao(() => {
-    const usuarioAtual = buscarUsuarioPorId(id);
+async function atualizarUsuario(id, dadosParaAtualizar) {
+  return banco.executarEmTransacao(async () => {
+    const usuarioAtual = await buscarUsuarioPorId(id);
     if (
       usuarioAtual?.ativo &&
       usuarioAtual.perfil === 'GERENTE' &&
       dadosParaAtualizar.perfil &&
       dadosParaAtualizar.perfil !== 'GERENTE'
     ) {
-      const { total } = db
-        .prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?')
-        .get('GERENTE');
+      const [{ total }] = await banco.consultar(
+        'SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?',
+        ['GERENTE'],
+      );
       if (total <= 1) return { ultimoGerenteProtegido: true };
     }
 
@@ -72,51 +65,50 @@ function atualizarUsuario(id, dadosParaAtualizar) {
         valores.push(dadosParaAtualizar[campo]);
       }
     }
-
     if (campos.length) {
       valores.push(Number(id));
-      db.prepare(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`).run(...valores);
+      await banco.executar(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`, valores);
     }
-    return { usuario: buscarUsuarioPorId(id) };
+    return { usuario: await buscarUsuarioPorId(id) };
   });
 }
 
-function desativarUsuario(id) {
-  return conexaoBanco.executarEmTransacao(() => {
-    const usuario = buscarUsuarioPorId(id);
+async function desativarUsuario(id) {
+  return banco.executarEmTransacao(async () => {
+    const usuario = await buscarUsuarioPorId(id);
     if (usuario?.ativo && usuario.perfil === 'GERENTE') {
-      const { total } = db
-        .prepare('SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?')
-        .get('GERENTE');
+      const [{ total }] = await banco.consultar(
+        'SELECT COUNT(*) AS total FROM usuarios WHERE ativo = 1 AND perfil = ?',
+        ['GERENTE'],
+      );
       if (total <= 1) return { ultimoGerenteProtegido: true };
     }
-    db.prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?').run(Number(id));
-    return { usuario: buscarUsuarioPorId(id) };
+    await banco.executar('UPDATE usuarios SET ativo = 0 WHERE id = ?', [Number(id)]);
+    return { usuario: await buscarUsuarioPorId(id) };
   });
 }
 
-function reativarUsuario(id) {
-  db.prepare('UPDATE usuarios SET ativo = 1 WHERE id = ?').run(Number(id));
+async function reativarUsuario(id) {
+  await banco.executar('UPDATE usuarios SET ativo = 1 WHERE id = ?', [Number(id)]);
   return buscarUsuarioPorId(id);
 }
 
-function atualizarSenha(id, novaSenhaHash) {
-  db.prepare(
+async function atualizarSenha(id, novaSenhaHash) {
+  await banco.executar(
     'UPDATE usuarios SET senha_hash = ?, tentativas_falhas = 0, bloqueado_until = NULL WHERE id = ?',
-  ).run(novaSenhaHash, Number(id));
+    [novaSenhaHash, Number(id)],
+  );
   return buscarUsuarioPorId(id);
 }
 
-function criarUsuario({ nome, email, cargo, perfil, senha }) {
+async function criarUsuario({ nome, email, cargo, perfil, senha }) {
   const senhaHash = bcrypt.hashSync(senha, 10);
-  const resultado = db
-    .prepare(
-      'INSERT INTO usuarios (nome, email, senha_hash, cargo, perfil, ativo, tentativas_falhas, bloqueado_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    )
-    .run(nome, email, senhaHash, cargo, perfil, 1, 0, null);
-
+  const resultado = await banco.executar(
+    'INSERT INTO usuarios (nome, email, senha_hash, cargo, perfil, ativo, tentativas_falhas, bloqueado_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [nome, email, senhaHash, cargo, perfil, 1, 0, null],
+  );
   return {
-    id: resultado.lastInsertRowid,
+    id: resultado.insertId,
     nome,
     email,
     senha_hash: senhaHash,

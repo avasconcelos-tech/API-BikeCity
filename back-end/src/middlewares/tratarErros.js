@@ -11,9 +11,8 @@ function tratarErros(err, req, res, next) {
     return res.status(err.status).json({ status: 'erro', mensagem: err.message });
   }
   if (
-    err.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
     err.code === 'ER_DUP_ENTRY' ||
-    /UNIQUE constraint failed/i.test(err.message || '')
+    /duplicate entry/i.test(err.message || '')
   ) {
     return res
       .status(409)

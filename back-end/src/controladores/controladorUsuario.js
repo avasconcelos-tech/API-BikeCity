@@ -1,17 +1,18 @@
 const servicoUsuario = require('../servicos/servicoUsuario');
+const asyncHandler = require('../middlewares/asyncHandler');
 
-function listarUsuarios(req, res) {
+async function listarUsuarios(req, res) {
   const incluirInativos = req.query.incluirInativos === 'true';
-  const usuarios = servicoUsuario.listarUsuarios(incluirInativos);
+  const usuarios = await servicoUsuario.listarUsuarios(incluirInativos);
   return res.status(200).json({ status: 'sucesso', dados: usuarios });
 }
 
-function buscarUsuarioPorId(req, res) {
-  const usuario = servicoUsuario.buscarUsuarioPorId(req.params.id);
+async function buscarUsuarioPorId(req, res) {
+  const usuario = await servicoUsuario.buscarUsuarioPorId(req.params.id);
   return res.status(200).json({ status: 'sucesso', dados: usuario });
 }
 
-function atualizarUsuario(req, res) {
+async function atualizarUsuario(req, res) {
   const camposPermitidos = ['nome', 'email', 'cargo', 'perfil'];
   const dadosParaAtualizar = {};
 
@@ -21,51 +22,59 @@ function atualizarUsuario(req, res) {
     }
   }
 
-  const usuario = servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
+  const usuario = await servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
   return res
     .status(200)
     .json({ status: 'sucesso', mensagem: 'Usuário atualizado com sucesso', dados: usuario });
 }
 
-function desativarUsuario(req, res) {
-  const usuario = servicoUsuario.desativarUsuario(req.params.id, req.user.id);
+async function desativarUsuario(req, res) {
+  const usuario = await servicoUsuario.desativarUsuario(req.params.id, req.user.id);
   return res
     .status(200)
     .json({ status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: usuario });
 }
 
-function reativarUsuario(req, res) {
-  const usuario = servicoUsuario.reativarUsuario(req.params.id);
+async function reativarUsuario(req, res) {
+  const usuario = await servicoUsuario.reativarUsuario(req.params.id);
   return res
     .status(200)
     .json({ status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: usuario });
 }
 
-function trocarSenha(req, res) {
+async function trocarSenha(req, res) {
   const usuarioId = req.user.id;
-  const dados = servicoUsuario.trocarSenha(usuarioId, req.body?.senhaAtual, req.body?.novaSenha);
+  const dados = await servicoUsuario.trocarSenha(
+    usuarioId,
+    req.body?.senhaAtual,
+    req.body?.novaSenha,
+  );
   return res.status(200).json({ status: 'sucesso', mensagem: 'Senha alterada com sucesso', dados });
 }
 
-function redefinirSenha(req, res) {
-  const dados = servicoUsuario.redefinirSenha(req.params.id, req.body?.novaSenha, req.user.id);
+async function redefinirSenha(req, res) {
+  const dados = await servicoUsuario.redefinirSenha(
+    req.params.id,
+    req.body?.novaSenha,
+    req.user.id,
+  );
   return res.status(200).json({ status: 'sucesso', mensagem: 'Senha alterada com sucesso', dados });
 }
 
-function criarUsuario(req, res) {
-  const dados = servicoUsuario.criarUsuario(req.body);
+async function criarUsuario(req, res) {
+  const dados = await servicoUsuario.criarUsuario(req.body);
   return res
     .status(201)
     .json({ status: 'sucesso', mensagem: 'Usuário cadastrado com sucesso', dados });
 }
 
 module.exports = {
-  listarUsuarios,
-  buscarUsuarioPorId,
-  atualizarUsuario,
-  desativarUsuario,
-  reativarUsuario,
-  trocarSenha,
-  redefinirSenha,
-  criarUsuario,
+  listarUsuarios: asyncHandler(listarUsuarios),
+  buscarUsuarioPorId: asyncHandler(buscarUsuarioPorId),
+  atualizarUsuario: asyncHandler(atualizarUsuario),
+  desativarUsuario: asyncHandler(desativarUsuario),
+  reativarUsuario: asyncHandler(reativarUsuario),
+  trocarSenha: asyncHandler(trocarSenha),
+  redefinirSenha: asyncHandler(redefinirSenha),
+  criarUsuario: asyncHandler(criarUsuario),
 };

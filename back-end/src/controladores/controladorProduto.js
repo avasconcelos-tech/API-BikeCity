@@ -1,16 +1,17 @@
 const servicoProduto = require('../servicos/servicoProduto');
-function listarProdutos(req, res) {
+const asyncHandler = require('../middlewares/asyncHandler');
+async function listarProdutos(req, res) {
   return res.json({
     status: 'sucesso',
-    dados: servicoProduto.listarProdutos(req.query.incluirInativos === 'true'),
+    dados: await servicoProduto.listarProdutos(req.query.incluirInativos === 'true'),
   });
 }
-function buscarProdutoPorId(req, res) {
-  const p = servicoProduto.buscarProdutoPorId(req.params.id);
+async function buscarProdutoPorId(req, res) {
+  const p = await servicoProduto.buscarProdutoPorId(req.params.id);
   if (!p) return res.status(404).json({ status: 'erro', mensagem: 'Produto não encontrado' });
   return res.json({ status: 'sucesso', dados: p });
 }
-function atualizarProduto(req, res) {
+async function atualizarProduto(req, res) {
   const permitidos = [
     'nome',
     'codigo_interno',
@@ -28,32 +29,32 @@ function atualizarProduto(req, res) {
   const dados = {};
   for (const campo of permitidos)
     if (Object.hasOwn(req.body, campo)) dados[campo] = req.body[campo];
-  const produto = servicoProduto.atualizarProduto(req.params.id, dados);
+  const produto = await servicoProduto.atualizarProduto(req.params.id, dados);
   return res.json({
     status: 'sucesso',
     mensagem: 'Produto atualizado com sucesso',
     dados: produto,
   });
 }
-function inativarProduto(req, res) {
-  const produto = servicoProduto.inativarProduto(req.params.id);
+async function inativarProduto(req, res) {
+  const produto = await servicoProduto.inativarProduto(req.params.id);
   return res.json({ status: 'sucesso', mensagem: 'Produto inativado com sucesso', dados: produto });
 }
-function reativarProduto(req, res) {
-  const produto = servicoProduto.reativarProduto(req.params.id);
+async function reativarProduto(req, res) {
+  const produto = await servicoProduto.reativarProduto(req.params.id);
   return res.json({ status: 'sucesso', mensagem: 'Produto reativado com sucesso', dados: produto });
 }
-function criarProduto(req, res) {
-  const dados = servicoProduto.criarProduto(req.body);
+async function criarProduto(req, res) {
+  const dados = await servicoProduto.criarProduto(req.body);
   return res
     .status(201)
     .json({ status: 'sucesso', mensagem: 'Produto cadastrado com sucesso', dados });
 }
 module.exports = {
-  listarProdutos,
-  buscarProdutoPorId,
-  atualizarProduto,
-  inativarProduto,
-  reativarProduto,
-  criarProduto,
+  listarProdutos: asyncHandler(listarProdutos),
+  buscarProdutoPorId: asyncHandler(buscarProdutoPorId),
+  atualizarProduto: asyncHandler(atualizarProduto),
+  inativarProduto: asyncHandler(inativarProduto),
+  reativarProduto: asyncHandler(reativarProduto),
+  criarProduto: asyncHandler(criarProduto),
 };

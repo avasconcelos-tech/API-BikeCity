@@ -1,12 +1,13 @@
 const servicoAutenticacao = require('../servicos/servicoAutenticacao');
+const asyncHandler = require('../middlewares/asyncHandler');
 
-function login(req, res) {
-  const dados = servicoAutenticacao.realizarLogin(req.body.email, req.body.senha);
+async function login(req, res) {
+  const dados = await servicoAutenticacao.realizarLogin(req.body.email, req.body.senha);
   return res
     .status(200)
     .json({ status: 'sucesso', mensagem: 'Login realizado com sucesso', dados });
 }
 
 module.exports = {
-  login,
+  login: asyncHandler(login),
 };

@@ -5,9 +5,11 @@ const path = require('path');
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const { app, resetarEstado } = require('../src/server');
+const conexaoBanco = require('../src/repositorios/conexaoBanco');
 const tratarErros = require('../src/middlewares/tratarErros');
 
 test.beforeEach(() => resetarEstado());
+test.after(() => conexaoBanco.fecharBanco());
 
 test('JSON malformado retorna erro 400', async () => {
   const res = await request(app)
@@ -28,7 +30,7 @@ test('violação de unicidade retorna conflito 409', () => {
     json(dados) { corpo = dados; return this; }
   };
 
-  tratarErros({ code: 'SQLITE_CONSTRAINT_UNIQUE', message: 'UNIQUE constraint failed: usuarios.email' }, {}, resposta, () => {});
+  tratarErros({ code: 'ER_DUP_ENTRY', message: "Duplicate entry for key 'usuarios.email'" }, {}, resposta, () => {});
 
   assert.equal(status, 409);
   assert.match(corpo.mensagem, /registro/i);

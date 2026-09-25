@@ -11,11 +11,12 @@ const conexaoBanco = require('../src/repositorios/conexaoBanco');
 const servicoAutenticacao = require('../src/servicos/servicoAutenticacao');
 
 test.beforeEach(() => conexaoBanco.resetarBancoParaTestes());
+test.after(() => conexaoBanco.fecharBanco());
 
 test('middleware rejeita token de usuário inativo', async () => {
-  const login = servicoAutenticacao.realizarLogin('gerente@teste.com', 'senha123');
+  const login = await servicoAutenticacao.realizarLogin('gerente@teste.com', 'senha123');
   const token = login.token;
-  conexaoBanco.obterBanco().prepare('UPDATE usuarios SET ativo = 0 WHERE id = 1').run();
+  await conexaoBanco.executar('UPDATE usuarios SET ativo = 0 WHERE id = 1');
 
   const resposta = await request(app)
     .get('/api/v1/usuarios')
@@ -25,9 +26,9 @@ test('middleware rejeita token de usuário inativo', async () => {
 });
 
 test('middleware usa o perfil atual do banco, não o perfil do token', async () => {
-  const login = servicoAutenticacao.realizarLogin('gerente@teste.com', 'senha123');
+  const login = await servicoAutenticacao.realizarLogin('gerente@teste.com', 'senha123');
   const token = login.token;
-  conexaoBanco.obterBanco().prepare("UPDATE usuarios SET perfil = 'OPERACIONAL' WHERE id = 1").run();
+  await conexaoBanco.executar("UPDATE usuarios SET perfil = 'OPERACIONAL' WHERE id = 1");
 
   const resposta = await request(app)
     .get('/api/v1/usuarios')

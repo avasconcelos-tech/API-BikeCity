@@ -1,27 +1,20 @@
-const conexaoBanco = require('./conexaoBanco');
+const banco = require('./conexaoBanco');
 
-const db = conexaoBanco.obterBanco();
-
-function listarProdutos(incluirInativos = false) {
-  const query = incluirInativos
-    ? 'SELECT * FROM produtos ORDER BY id'
-    : 'SELECT * FROM produtos WHERE ativo = 1 ORDER BY id';
-  return db
-    .prepare(query)
-    .all()
-    .map((produto) => ({
-      ...produto,
-      ativo: Boolean(produto.ativo),
-    }));
+function mapearProduto(produto) {
+  return produto ? { ...produto, ativo: Boolean(produto.ativo) } : null;
 }
 
-function criarProduto(produtoInput) {
-  const resultado = db
-    .prepare(
-      `INSERT INTO produtos (nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo,tipo_rastreabilidade,demanda_prevista)
+async function listarProdutos(incluirInativos = false) {
+  const filtro = incluirInativos ? '' : ' WHERE ativo = 1';
+  const produtos = await banco.consultar(`SELECT * FROM produtos${filtro} ORDER BY id`);
+  return produtos.map(mapearProduto);
+}
+
+async function criarProduto(produtoInput) {
+  const resultado = await banco.executar(
+    `INSERT INTO produtos (nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo,tipo_rastreabilidade,demanda_prevista)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    )
-    .run(
+    [
       produtoInput.nome,
       produtoInput.codigo_interno,
       produtoInput.categoria,
@@ -36,32 +29,28 @@ function criarProduto(produtoInput) {
       produtoInput.ativo === undefined ? 1 : Number(Boolean(produtoInput.ativo)),
       produtoInput.tipo_rastreabilidade ?? 'NENHUMA',
       produtoInput.demanda_prevista ?? 0,
-    );
-  return buscarProdutoPorId(Number(resultado.lastInsertRowid));
+    ],
+  );
+  return buscarProdutoPorId(resultado.insertId);
 }
 
-function buscarProdutoPorId(id) {
-  const produto = db.prepare('SELECT * FROM produtos WHERE id = ?').get(Number(id));
-  if (!produto) return null;
-  return {
-    ...produto,
-    ativo: Boolean(produto.ativo),
-  };
+async function buscarProdutoPorId(id) {
+  const [produto] = await banco.consultar('SELECT * FROM produtos WHERE id = ?', [Number(id)]);
+  return mapearProduto(produto);
 }
 
-function buscarPorCodigo(codigo) {
-  const produto = db
-    .prepare('SELECT * FROM produtos WHERE ativo = 1 AND codigo_interno = ?')
-    .get(codigo);
-  if (!produto) return null;
-  return { ...produto, ativo: Boolean(produto.ativo) };
+async function buscarPorCodigo(codigo) {
+  const [produto] = await banco.consultar(
+    'SELECT * FROM produtos WHERE ativo = 1 AND codigo_interno = ?',
+    [codigo],
+  );
+  return mapearProduto(produto);
 }
 
-function atualizarProduto(id, dadosParaAtualizar) {
+async function atualizarProduto(id, dadosParaAtualizar) {
   const campos = [];
   const valores = [];
-
-  const camposPermitidos = [
+  const permitidos = [
     'nome',
     'codigo_interno',
     'categoria',
@@ -76,34 +65,34 @@ function atualizarProduto(id, dadosParaAtualizar) {
     'tipo_rastreabilidade',
     'demanda_prevista',
   ];
-  for (const campo of camposPermitidos) {
+  for (const campo of permitidos) {
     if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, campo)) {
       campos.push(`${campo} = ?`);
       valores.push(dadosParaAtualizar[campo]);
     }
   }
-
-  if (!campos.length) {
-    return buscarProdutoPorId(id);
+  if (campos.length) {
+    valores.push(Number(id));
+    await banco.executar(`UPDATE produtos SET ${campos.join(', ')} WHERE id = ?`, valores);
   }
-
-  valores.push(Number(id));
-  db.prepare(`UPDATE produtos SET ${campos.join(', ')} WHERE id = ?`).run(...valores);
   return buscarProdutoPorId(id);
 }
 
-function inativarProduto(id) {
-  db.prepare('UPDATE produtos SET ativo = 0 WHERE id = ?').run(Number(id));
+async function inativarProduto(id) {
+  await banco.executar('UPDATE produtos SET ativo = 0 WHERE id = ?', [Number(id)]);
   return buscarProdutoPorId(id);
 }
 
-function reativarProduto(id) {
-  db.prepare('UPDATE produtos SET ativo = 1 WHERE id = ?').run(Number(id));
+async function reativarProduto(id) {
+  await banco.executar('UPDATE produtos SET ativo = 1 WHERE id = ?', [Number(id)]);
   return buscarProdutoPorId(id);
 }
 
-function atualizarEstoqueProduto(id, novoEstoque) {
-  db.prepare('UPDATE produtos SET estoque_atual = ? WHERE id = ?').run(novoEstoque, Number(id));
+async function atualizarEstoqueProduto(id, novoEstoque) {
+  await banco.executar('UPDATE produtos SET estoque_atual = ? WHERE id = ?', [
+    novoEstoque,
+    Number(id),
+  ]);
   return buscarProdutoPorId(id);
 }
 

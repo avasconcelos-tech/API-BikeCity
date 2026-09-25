@@ -45,7 +45,7 @@ async function vincularImagem(produtoId, arquivo) {
   }
   if (!arquivo) throw new ErroNegocio(400, 'Nenhuma imagem enviada.');
 
-  const produto = repositorioProduto.buscarProdutoPorId(produtoId);
+  const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
   if (!produto) {
     await removerArquivo(arquivo.path);
     throw new ErroNegocio(404, 'Produto não encontrado.');
@@ -60,7 +60,7 @@ async function vincularImagem(produtoId, arquivo) {
     }
 
     const caminhoImagem = `/uploads/${arquivo.filename}`;
-    servicoProduto.vincularImagem(produto.id, caminhoImagem);
+    await servicoProduto.vincularImagem(produto.id, caminhoImagem);
 
     const caminhoAnterior = obterCaminhoImagemLocal(produto.imagem_url);
     if (caminhoAnterior && caminhoAnterior !== path.resolve(arquivo.path)) {

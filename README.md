@@ -13,7 +13,7 @@ Sistema de gestão de estoque, compras, logística e rastreabilidade para bicicl
 
 O BikeCity foi desenvolvido para controlar de forma centralizada o ciclo de movimentação de produtos em um ambiente de mobilidade urbana. O sistema permite registrar entradas, saídas, alertas de estoque, usuários, fornecedores e relatórios operacionais, com foco em rastreabilidade e organização do processo logístico.
 
-A aplicação combina backend em Node.js, banco de dados SQLite e interface web para uso interno, sendo adequada para ambientes locais ou rede corporativa.
+A aplicação combina backend em Node.js, banco de dados MySQL/MariaDB e interface web para uso interno, sendo adequada para ambientes locais ou rede corporativa.
 
 ## Serviço proposto
 
@@ -46,7 +46,7 @@ A estrutura do projeto está dividida em camadas:
 
 - Front-end: interface web em HTML, CSS e JavaScript;
 - Back-end: API REST com Express;
-- Persistência: banco SQLite;
+- Persistência: banco MySQL/MariaDB;
 - Segurança: autenticação JWT e controle por perfil;
 - Armazenamento de arquivos: pasta uploads;
 - Testes: validação da API via Node.js test runner.
@@ -78,7 +78,7 @@ API-BikeCity/
 
 - Node.js
 - Express.js
-- SQLite
+- MySQL 8.0+ ou MariaDB 10.3+
 - JWT
 - bcryptjs
 - Multer
@@ -100,14 +100,29 @@ API-BikeCity/
 npm install
 ```
 
-2. Crie o arquivo `.env` na raiz do projeto e defina um segredo JWT:
+2. Crie o banco e o usuário da aplicação no MySQL/MariaDB (substitua a senha de exemplo):
+
+```sql
+CREATE DATABASE bikecity CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'bikecity'@'localhost' IDENTIFIED BY 'substitua-esta-senha';
+GRANT ALL PRIVILEGES ON bikecity.* TO 'bikecity'@'localhost';
+```
+
+3. Copie `.env.example` para `.env` e configure o segredo JWT e as credenciais do banco:
 
 ```dotenv
 JWT_SECRET=defina-um-segredo-longo-e-aleatorio
 PORT=5500
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=bikecity
+DB_PASSWORD=substitua-esta-senha
+DB_NAME=bikecity
 ```
 
-3. Inicie a aplicação:
+No primeiro início, a aplicação instala o esquema idempotente de `back-end/sql/schema.sql`. A carga de demonstração em `back-end/sql/seed.sql` só é executada em `development` e `test`; não é carregada em produção. O usuário demonstrativo é `gerente@teste.com` / `senha123` e deve ser removido ou ter a senha alterada em ambientes não locais.
+
+4. Inicie a aplicação:
 
 ```bash
 npm start
@@ -139,7 +154,15 @@ http://localhost:5500/login.html
 
 ## Testes
 
-Os testes carregam as variáveis do arquivo `.env.test` e usam `back-end/database.test.sqlite`, separado do banco de desenvolvimento. Esse arquivo de banco é local e ignorado pelo Git.
+Os testes carregam `.env.test` e usam um banco MySQL/MariaDB separado, `bikecity_test`. Crie o banco antes de executá-los e configure credenciais de teste nesse arquivo:
+
+```sql
+CREATE DATABASE bikecity_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'bikecity_test'@'localhost' IDENTIFIED BY 'defina-uma-senha-de-teste';
+GRANT ALL PRIVILEGES ON bikecity_test.* TO 'bikecity_test'@'localhost';
+```
+
+O usuário configurado precisa poder criar tabelas e índices no banco de teste. Não use o banco de produção para testes: cada caso apaga e recria os dados de demonstração.
 
 ```bash
 npm test

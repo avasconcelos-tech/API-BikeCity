@@ -1,16 +1,9 @@
-const conexaoBanco = require('./conexaoBanco');
-const db = conexaoBanco.obterBanco();
+const banco = require('./conexaoBanco');
 
-function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
+async function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
   const params = [];
   const clausulas = [];
-  const produtoId = filtros.produto_id;
-  const tipo = filtros.tipo;
-  const usuarioId = filtros.usuario_id;
-  const dataInicio = filtros.data_inicio;
-  const dataFim = filtros.data_fim;
-  const busca = filtros.busca;
-
+  const { produto_id: produtoId, tipo, usuario_id: usuarioId, data_inicio: inicio, data_fim: fim, busca } = filtros;
   if (produtoId !== null && produtoId !== undefined && produtoId !== '') {
     clausulas.push('m.produto_id = ?');
     params.push(Number(produtoId));
@@ -23,13 +16,13 @@ function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
     clausulas.push('m.usuario_id = ?');
     params.push(Number(usuarioId));
   }
-  if (dataInicio) {
-    clausulas.push('date(m.data_movimentacao) >= date(?)');
-    params.push(dataInicio);
+  if (inicio) {
+    clausulas.push('DATE(m.data_movimentacao) >= DATE(?)');
+    params.push(inicio);
   }
-  if (dataFim) {
-    clausulas.push('date(m.data_movimentacao) <= date(?)');
-    params.push(dataFim);
+  if (fim) {
+    clausulas.push('DATE(m.data_movimentacao) <= DATE(?)');
+    params.push(fim);
   }
   if (busca) {
     const termo = `%${String(busca).toLowerCase()}%`;
@@ -38,46 +31,37 @@ function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
     );
     params.push(termo, termo, termo, termo, termo, termo);
   }
-
   const where = clausulas.length ? ` WHERE ${clausulas.join(' AND ')}` : '';
-  const total = db
-    .prepare(
-      `SELECT COUNT(*) AS total
-    FROM movimentacoes m
-    LEFT JOIN produtos p ON p.id = m.produto_id
-    LEFT JOIN usuarios u ON u.id = m.usuario_id ${where}`,
-    )
-    .get(...params).total;
-
+  const [contagem] = await banco.consultar(
+    `SELECT COUNT(*) AS total
+     FROM movimentacoes m
+     LEFT JOIN produtos p ON p.id = m.produto_id
+     LEFT JOIN usuarios u ON u.id = m.usuario_id${where}`,
+    params,
+  );
   const pagina = Number(page) > 0 ? Number(page) : 1;
   const limite = Number(limit) > 0 ? Number(limit) : 20;
   const offset = (pagina - 1) * limite;
-  const dados = db
-    .prepare(
-      `SELECT m.*, p.nome AS produto_nome, u.nome AS usuario_nome
-    FROM movimentacoes m
-    LEFT JOIN produtos p ON p.id = m.produto_id
-    LEFT JOIN usuarios u ON u.id = m.usuario_id ${where}
-    ORDER BY m.data_movimentacao DESC, m.id DESC LIMIT ? OFFSET ?`,
-    )
-    .all(...params, limite, offset);
-
+  const dados = await banco.consultar(
+    `SELECT m.*, p.nome AS produto_nome, u.nome AS usuario_nome
+     FROM movimentacoes m
+     LEFT JOIN produtos p ON p.id = m.produto_id
+     LEFT JOIN usuarios u ON u.id = m.usuario_id${where}
+     ORDER BY m.data_movimentacao DESC, m.id DESC LIMIT ? OFFSET ?`,
+    [...params, limite, offset],
+  );
   return {
     dados,
     meta: {
       page: pagina,
       limit: limite,
-      total: Number(total),
-      total_pages: Math.max(1, Math.ceil(Number(total) / limite)),
+      total: Number(contagem.total),
+      total_pages: Math.max(1, Math.ceil(Number(contagem.total) / limite)),
     },
   };
 }
-function adicionarMovimentacao(m) {
-  const colunas = db
-    .prepare('PRAGMA table_info(movimentacoes)')
-    .all()
-    .map((coluna) => coluna.name);
-  const temOrigem = colunas.includes('movimentacao_origem_id');
+
+async function adicionarMovimentacao(m) {
   const campos = [
     'produto_id',
     'usuario_id',
@@ -96,13 +80,9 @@ function adicionarMovimentacao(m) {
     'observacao',
     'estoque_anterior',
     'estoque_novo',
+    'movimentacao_origem_id',
   ];
-
-  if (temOrigem) campos.push('movimentacao_origem_id');
-
-  const placeholders = campos.map(() => '?').join(', ');
-  const sql = `INSERT INTO movimentacoes (${campos.join(',')}) VALUES (${placeholders})`;
-  const params = [
+  const valores = [
     m.produto_id,
     m.usuario_id,
     m.tipo,
@@ -120,23 +100,29 @@ function adicionarMovimentacao(m) {
     m.observacao ?? null,
     m.estoque_anterior ?? null,
     m.estoque_novo ?? null,
+    m.movimentacao_origem_id ?? null,
   ];
-
-  if (temOrigem) params.push(m.movimentacao_origem_id ?? null);
-
-  const r = db.prepare(sql).run(...params);
-  return { id: Number(r.lastInsertRowid), ...m };
+  const placeholders = campos.map(() => '?').join(', ');
+  const resultado = await banco.executar(
+    `INSERT INTO movimentacoes (${campos.join(',')}) VALUES (${placeholders})`,
+    valores,
+  );
+  return { id: resultado.insertId, ...m };
 }
-function buscarMovimentacaoPorId(id) {
-  return db.prepare('SELECT * FROM movimentacoes WHERE id = ?').get(Number(id)) || null;
+
+async function buscarMovimentacaoPorId(id) {
+  const [movimentacao] = await banco.consultar('SELECT * FROM movimentacoes WHERE id = ?', [
+    Number(id),
+  ]);
+  return movimentacao || null;
 }
-function adicionarRastreabilidade(r) {
-  const result = db
-    .prepare(
-      `INSERT INTO rastreabilidade
-    (produto_id,movimentacao_id,tipo,numero_serie,lote,data_validade,identificador_unico,status,localizacao) VALUES (?,?,?,?,?,?,?,?,?)`,
-    )
-    .run(
+
+async function adicionarRastreabilidade(r) {
+  const resultado = await banco.executar(
+    `INSERT INTO rastreabilidade
+     (produto_id,movimentacao_id,tipo,numero_serie,lote,data_validade,identificador_unico,status,localizacao)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+    [
       r.produto_id,
       r.movimentacao_id,
       r.tipo,
@@ -146,82 +132,93 @@ function adicionarRastreabilidade(r) {
       r.identificador_unico ?? null,
       r.status ?? 'EM_ESTOQUE',
       r.localizacao ?? null,
-    );
-  return { id: Number(result.lastInsertRowid), ...r };
+    ],
+  );
+  return { id: resultado.insertId, ...r };
 }
-function listarRastreabilidade(produtoId = null) {
-  if (produtoId)
-    return db
-      .prepare(
-        `SELECT r.*,p.nome AS produto_nome FROM rastreabilidade r JOIN produtos p ON p.id=r.produto_id WHERE r.produto_id=? ORDER BY r.id DESC`,
-      )
-      .all(Number(produtoId));
-  return db
-    .prepare(
-      `SELECT r.*,p.nome AS produto_nome FROM rastreabilidade r JOIN produtos p ON p.id=r.produto_id ORDER BY r.id DESC`,
-    )
-    .all();
-}
-function atualizarStatusRastreabilidadePorIds(ids, status) {
-  if (!ids.length) return 0;
-  const placeholders = ids.map(() => '?').join(', ');
-  return db
-    .prepare(`UPDATE rastreabilidade SET status = ? WHERE id IN (${placeholders})`)
-    .run(status, ...ids.map(Number)).changes;
-}
-function atualizarStatusRastreabilidadePorMovimentacao(movimentacaoId, status) {
-  return db
-    .prepare('UPDATE rastreabilidade SET status = ? WHERE movimentacao_id = ? AND status <> ?')
-    .run(status, Number(movimentacaoId), status).changes;
-}
-function buscarAlertaAberto(produtoId) {
-  return (
-    db
-      .prepare('SELECT * FROM alertas WHERE produto_id = ? AND lido = 0 ORDER BY id DESC LIMIT 1')
-      .get(Number(produtoId)) || null
+
+async function listarRastreabilidade(produtoId = null) {
+  const filtro = produtoId ? ' WHERE r.produto_id = ?' : '';
+  return banco.consultar(
+    `SELECT r.*,p.nome AS produto_nome
+     FROM rastreabilidade r JOIN produtos p ON p.id = r.produto_id${filtro}
+     ORDER BY r.id DESC`,
+    produtoId ? [Number(produtoId)] : [],
   );
 }
-function adicionarAlerta(a) {
-  const existente = buscarAlertaAberto(a.produto_id);
-  if (existente) return { ...existente, lido: false, criado: false };
 
-  const criadoEm = new Date().toISOString();
-  const resultado = conexaoBanco.executarEmTransacao(() => {
-    const inserido = db
-      .prepare('INSERT INTO alertas(produto_id,mensagem,lido,criado_em) VALUES(?,?,0,?)')
-      .run(a.produto_id, a.mensagem, criadoEm);
+async function atualizarStatusRastreabilidadePorIds(ids, status) {
+  if (!ids.length) return 0;
+  const placeholders = ids.map(() => '?').join(', ');
+  const resultado = await banco.executar(
+    `UPDATE rastreabilidade SET status = ? WHERE id IN (${placeholders})`,
+    [status, ...ids.map(Number)],
+  );
+  return resultado.affectedRows;
+}
+
+async function atualizarStatusRastreabilidadePorMovimentacao(movimentacaoId, status) {
+  const resultado = await banco.executar(
+    'UPDATE rastreabilidade SET status = ? WHERE movimentacao_id = ? AND status <> ?',
+    [status, Number(movimentacaoId), status],
+  );
+  return resultado.affectedRows;
+}
+
+async function buscarAlertaAberto(produtoId) {
+  const [alerta] = await banco.consultar(
+    'SELECT * FROM alertas WHERE produto_id = ? AND lido = 0 ORDER BY id DESC LIMIT 1',
+    [Number(produtoId)],
+  );
+  return alerta || null;
+}
+
+async function adicionarAlerta(a) {
+  return banco.executarEmTransacao(async () => {
+    const existente = await buscarAlertaAberto(a.produto_id);
+    if (existente) return { ...existente, lido: false, criado: false };
+
+    const criadoEm = new Date().toISOString();
+    const inserido = await banco.executar(
+      'INSERT INTO alertas(produto_id,mensagem,lido,criado_em) VALUES(?,?,0,?)',
+      [a.produto_id, a.mensagem, criadoEm],
+    );
     for (const setor of ['COMPRAS', 'LOGISTICA']) {
-      db.prepare(
+      await banco.executar(
         'INSERT INTO notificacoes(setor,titulo,mensagem,produto_id,lida,criada_em) VALUES(?,?,?,?,0,?)',
-      ).run(setor, 'Estoque baixo', a.mensagem, a.produto_id, criadoEm);
+        [setor, 'Estoque baixo', a.mensagem, a.produto_id, criadoEm],
+      );
     }
-    return Number(inserido.lastInsertRowid);
+    return { id: inserido.insertId, ...a, lido: false, criado: true };
   });
-  return { id: resultado, ...a, lido: false, criado: true };
 }
-function listarAlertas() {
-  return db
-    .prepare(
-      `SELECT a.*,p.nome AS produto_nome FROM alertas a LEFT JOIN produtos p ON p.id=a.produto_id ORDER BY a.id DESC`,
-    )
-    .all()
-    .map((a) => ({ ...a, lido: Boolean(a.lido) }));
+
+async function listarAlertas() {
+  const alertas = await banco.consultar(
+    `SELECT a.*,p.nome AS produto_nome
+     FROM alertas a LEFT JOIN produtos p ON p.id = a.produto_id ORDER BY a.id DESC`,
+  );
+  return alertas.map((a) => ({ ...a, lido: Boolean(a.lido) }));
 }
-function marcarAlertaLido(id) {
-  db.prepare('UPDATE alertas SET lido=1 WHERE id=?').run(Number(id));
+
+async function marcarAlertaLido(id) {
+  await banco.executar('UPDATE alertas SET lido = 1 WHERE id = ?', [Number(id)]);
   return true;
 }
-function fecharAlertasAbertos(produtoId) {
-  return db
-    .prepare('UPDATE alertas SET lido = 1 WHERE produto_id = ? AND lido = 0')
-    .run(Number(produtoId)).changes;
+
+async function fecharAlertasAbertos(produtoId) {
+  const resultado = await banco.executar(
+    'UPDATE alertas SET lido = 1 WHERE produto_id = ? AND lido = 0',
+    [Number(produtoId)],
+  );
+  return resultado.affectedRows;
 }
-function adicionarAuditoria(r) {
-  const x = db
-    .prepare(
-      `INSERT INTO auditoria(produto_id,usuario_id,acao,antigo_valor,novo_valor,justificativa,data) VALUES(?,?,?,?,?,?,?)`,
-    )
-    .run(
+
+async function adicionarAuditoria(r) {
+  const resultado = await banco.executar(
+    `INSERT INTO auditoria(produto_id,usuario_id,acao,antigo_valor,novo_valor,justificativa,data)
+     VALUES(?,?,?,?,?,?,?)`,
+    [
       r.produto_id ?? null,
       r.usuario_id,
       r.acao ?? 'AJUSTE_MANUAL',
@@ -229,15 +226,16 @@ function adicionarAuditoria(r) {
       String(r.novo_valor ?? ''),
       r.justificativa ?? null,
       r.data,
-    );
-  return { id: Number(x.lastInsertRowid), ...r };
+    ],
+  );
+  return { id: resultado.insertId, ...r };
 }
-function adicionarDevolucao(d) {
-  const r = db
-    .prepare(
-      `INSERT INTO devolucoes(produto_id,usuario_id,origem,motivo,estado_produto,numero_pedido_venda,reaproveitavel,quantidade,data_devolucao,status,observacao) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-    )
-    .run(
+
+async function adicionarDevolucao(d) {
+  const resultado = await banco.executar(
+    `INSERT INTO devolucoes(produto_id,usuario_id,origem,motivo,estado_produto,numero_pedido_venda,reaproveitavel,quantidade,data_devolucao,status,observacao)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    [
       d.produto_id,
       d.usuario_id,
       d.origem,
@@ -249,60 +247,78 @@ function adicionarDevolucao(d) {
       d.data_devolucao,
       d.status ?? 'APROVADA',
       d.observacao ?? null,
-    );
-  return { id: Number(r.lastInsertRowid), ...d };
+    ],
+  );
+  return { id: resultado.insertId, ...d };
 }
-function listarDevolucoes() {
-  return db
-    .prepare(
-      `SELECT d.*,p.nome AS produto_nome,u.nome AS usuario_nome FROM devolucoes d LEFT JOIN produtos p ON p.id=d.produto_id LEFT JOIN usuarios u ON u.id=d.usuario_id ORDER BY d.id DESC`,
-    )
-    .all()
-    .map((d) => ({ ...d, reaproveitavel: Boolean(d.reaproveitavel) }));
+
+async function listarDevolucoes() {
+  const devolucoes = await banco.consultar(
+    `SELECT d.*,p.nome AS produto_nome,u.nome AS usuario_nome
+     FROM devolucoes d
+     LEFT JOIN produtos p ON p.id = d.produto_id
+     LEFT JOIN usuarios u ON u.id = d.usuario_id ORDER BY d.id DESC`,
+  );
+  return devolucoes.map((d) => ({ ...d, reaproveitavel: Boolean(d.reaproveitavel) }));
 }
-function adicionarNotificacao(n) {
-  const r = db
-    .prepare(
-      'INSERT INTO notificacoes(setor,titulo,mensagem,produto_id,lida,criada_em) VALUES(?,?,?,?,0,?)',
-    )
-    .run(n.setor, n.titulo, n.mensagem, n.produto_id ?? null, new Date().toISOString());
-  return { id: Number(r.lastInsertRowid), ...n, lida: false };
+
+async function adicionarNotificacao(n) {
+  const resultado = await banco.executar(
+    'INSERT INTO notificacoes(setor,titulo,mensagem,produto_id,lida,criada_em) VALUES(?,?,?,?,0,?)',
+    [n.setor, n.titulo, n.mensagem, n.produto_id ?? null, new Date().toISOString()],
+  );
+  return { id: resultado.insertId, ...n, lida: false };
 }
-function listarNotificacoes(setor = null) {
-  const query = setor
-    ? 'SELECT * FROM notificacoes WHERE setor=? ORDER BY id DESC'
-    : 'SELECT * FROM notificacoes ORDER BY id DESC';
-  const notificacoes = setor ? db.prepare(query).all(setor) : db.prepare(query).all();
+
+async function listarNotificacoes(setor = null) {
+  const notificacoes = setor
+    ? await banco.consultar('SELECT * FROM notificacoes WHERE setor = ? ORDER BY id DESC', [setor])
+    : await banco.consultar('SELECT * FROM notificacoes ORDER BY id DESC');
   return notificacoes.map((n) => ({ ...n, lida: Boolean(n.lida) }));
 }
-function marcarNotificacaoLida(id) {
-  const resultado = db.prepare('UPDATE notificacoes SET lida = 1 WHERE id = ?').run(Number(id));
-  return resultado.changes > 0;
+
+async function marcarNotificacaoLida(id) {
+  const resultado = await banco.executar('UPDATE notificacoes SET lida = 1 WHERE id = ?', [
+    Number(id),
+  ]);
+  return resultado.affectedRows > 0;
 }
-function resumo() {
-  return db
-    .prepare(
-      `SELECT COUNT(*) total_produtos, COALESCE(SUM(estoque_atual*custo),0) valor_total_estoque, SUM(CASE WHEN estoque_atual<=estoque_minimo THEN 1 ELSE 0 END) estoque_critico FROM produtos WHERE ativo=1`,
-    )
-    .get();
+
+async function resumo() {
+  const [resultado] = await banco.consultar(
+    `SELECT COUNT(*) total_produtos,
+       COALESCE(SUM(estoque_atual * custo), 0) valor_total_estoque,
+       SUM(CASE WHEN estoque_atual <= estoque_minimo THEN 1 ELSE 0 END) estoque_critico
+     FROM produtos WHERE ativo = 1`,
+  );
+  return resultado;
 }
-function relatorio(filtros = {}) {
-  const movimentacoes = listarMovimentacoes(filtros, filtros.page || 1, filtros.limit || 20);
-  const estoque = db
-    .prepare(
-      `SELECT id,nome,codigo_interno,categoria,estoque_atual,estoque_minimo,custo,localizacao_deposito,estado_montagem FROM produtos WHERE ativo=1 ORDER BY nome`,
-    )
-    .all();
-  const resumoGeral = resumo();
+
+async function relatorio(filtros = {}) {
+  const movimentacoes = await listarMovimentacoes(
+    filtros,
+    filtros.page || 1,
+    filtros.limit || 20,
+  );
+  const [estoque, devolucoes, alertas, resumoGeral] = await Promise.all([
+    banco.consultar(
+      `SELECT id,nome,codigo_interno,categoria,estoque_atual,estoque_minimo,custo,localizacao_deposito,estado_montagem
+       FROM produtos WHERE ativo = 1 ORDER BY nome`,
+    ),
+    listarDevolucoes(),
+    listarAlertas(),
+    resumo(),
+  ]);
   return {
     estoque,
     movimentacoes: movimentacoes.dados,
-    devolucoes: listarDevolucoes(),
-    alertas: listarAlertas(),
+    devolucoes,
+    alertas,
     resumo: resumoGeral,
     meta: movimentacoes.meta,
   };
 }
+
 module.exports = {
   listarMovimentacoes,
   adicionarMovimentacao,

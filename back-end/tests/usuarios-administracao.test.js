@@ -2,8 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const { app, resetarEstado } = require('../src/server');
+const conexaoBanco = require('../src/repositorios/conexaoBanco');
 
 test.beforeEach(() => resetarEstado());
+test.after(() => conexaoBanco.fecharBanco());
 
 async function obterToken(email = 'gerente@teste.com', senha = 'senha123') {
   const resposta = await request(app).post('/api/v1/auth/login').send({ email, senha });

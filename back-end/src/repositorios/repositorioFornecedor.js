@@ -1,36 +1,25 @@
-const conexaoBanco = require('./conexaoBanco');
+const banco = require('./conexaoBanco');
 
-const db = conexaoBanco.obterBanco();
-
-function listarFornecedores(incluirInativos = false) {
-  const query = incluirInativos
-    ? 'SELECT * FROM fornecedores ORDER BY id'
-    : 'SELECT * FROM fornecedores WHERE ativo = 1 ORDER BY id';
-  return db
-    .prepare(query)
-    .all()
-    .map((fornecedor) => ({
-      ...fornecedor,
-      ativo: Boolean(fornecedor.ativo),
-    }));
+async function listarFornecedores(incluirInativos = false) {
+  const filtro = incluirInativos ? '' : ' WHERE ativo = 1';
+  const fornecedores = await banco.consultar(`SELECT * FROM fornecedores${filtro} ORDER BY id`);
+  return fornecedores.map((f) => ({ ...f, ativo: Boolean(f.ativo) }));
 }
 
-function buscarFornecedorPorId(id) {
-  const fornecedor = db.prepare('SELECT * FROM fornecedores WHERE id = ?').get(Number(id));
-  if (!fornecedor) return null;
-  return {
-    ...fornecedor,
-    ativo: Boolean(fornecedor.ativo),
-  };
+async function buscarFornecedorPorId(id) {
+  const [fornecedor] = await banco.consultar('SELECT * FROM fornecedores WHERE id = ?', [
+    Number(id),
+  ]);
+  return fornecedor ? { ...fornecedor, ativo: Boolean(fornecedor.ativo) } : null;
 }
 
-function criarFornecedor(dados) {
-  const resultado = db
-    .prepare('INSERT INTO fornecedores (nome, cnpj, contato, ativo) VALUES (?, ?, ?, ?)')
-    .run(dados.nome, dados.cnpj ?? null, dados.contato ?? null, 1);
-
+async function criarFornecedor(dados) {
+  const resultado = await banco.executar(
+    'INSERT INTO fornecedores (nome, cnpj, contato, ativo) VALUES (?, ?, ?, ?)',
+    [dados.nome, dados.cnpj ?? null, dados.contato ?? null, 1],
+  );
   return {
-    id: resultado.lastInsertRowid,
+    id: resultado.insertId,
     nome: dados.nome,
     cnpj: dados.cnpj ?? null,
     contato: dados.contato ?? null,
@@ -38,36 +27,38 @@ function criarFornecedor(dados) {
   };
 }
 
-function atualizarFornecedor(id, dados) {
-  const resultado = db
-    .prepare('UPDATE fornecedores SET nome = ?, cnpj = ?, contato = ? WHERE id = ?')
-    .run(dados.nome, dados.cnpj ?? null, dados.contato ?? null, Number(id));
-  if (!resultado.changes) return null;
+async function atualizarFornecedor(id, dados) {
+  const resultado = await banco.executar(
+    'UPDATE fornecedores SET nome = ?, cnpj = ?, contato = ? WHERE id = ?',
+    [dados.nome, dados.cnpj ?? null, dados.contato ?? null, Number(id)],
+  );
+  if (!resultado.affectedRows) return null;
   return buscarFornecedorPorId(id);
 }
 
-function existeCnpj(cnpj, excetoId = null) {
-  const query =
+async function existeCnpj(cnpj, excetoId = null) {
+  const sql =
     excetoId === null
-      ? 'SELECT 1 FROM fornecedores WHERE cnpj = ?'
-      : 'SELECT 1 FROM fornecedores WHERE cnpj = ? AND id <> ?';
+      ? 'SELECT 1 FROM fornecedores WHERE cnpj = ? LIMIT 1'
+      : 'SELECT 1 FROM fornecedores WHERE cnpj = ? AND id <> ? LIMIT 1';
   const parametros = excetoId === null ? [cnpj] : [cnpj, Number(excetoId)];
-  return Boolean(db.prepare(query).get(...parametros));
+  return (await banco.consultar(sql, parametros)).length > 0;
 }
 
-function inativarFornecedor(id) {
-  return conexaoBanco.executarEmTransacao(() => {
+async function inativarFornecedor(id) {
+  return banco.executarEmTransacao(async () => {
     const fornecedorId = Number(id);
-    const fornecedor = buscarFornecedorPorId(fornecedorId);
+    const fornecedor = await buscarFornecedorPorId(fornecedorId);
     if (!fornecedor) return { fornecedor: null, possuiProdutosAtivos: false };
 
-    const produtoAtivo = db
-      .prepare('SELECT 1 FROM produtos WHERE fornecedor_id = ? AND ativo = 1 LIMIT 1')
-      .get(fornecedorId);
-    if (produtoAtivo) return { fornecedor: null, possuiProdutosAtivos: true };
+    const produtoAtivo = await banco.consultar(
+      'SELECT 1 FROM produtos WHERE fornecedor_id = ? AND ativo = 1 LIMIT 1',
+      [fornecedorId],
+    );
+    if (produtoAtivo.length) return { fornecedor: null, possuiProdutosAtivos: true };
 
-    db.prepare('UPDATE fornecedores SET ativo = 0 WHERE id = ?').run(fornecedorId);
-    return { fornecedor: buscarFornecedorPorId(fornecedorId), possuiProdutosAtivos: false };
+    await banco.executar('UPDATE fornecedores SET ativo = 0 WHERE id = ?', [fornecedorId]);
+    return { fornecedor: await buscarFornecedorPorId(fornecedorId), possuiProdutosAtivos: false };
   });
 }
 

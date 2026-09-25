@@ -62,16 +62,16 @@ function listarUsuarios(incluirInativos = false) {
   return repositorio.listarUsuarios(incluirInativos);
 }
 
-function buscarUsuarioPorId(id) {
+async function buscarUsuarioPorId(id) {
   if (!Number.isInteger(Number(id)) || Number(id) < 1)
     throw new ErroNegocio(404, 'Usuário não encontrado');
-  const usuario = repositorio.buscarUsuarioPorId(id);
+  const usuario = await repositorio.buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
   return usuario;
 }
 
-function atualizarUsuario(id, dadosParaAtualizar) {
-  const usuario = buscarUsuarioPorId(id);
+async function atualizarUsuario(id, dadosParaAtualizar) {
+  const usuario = await buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
 
   const validacao = validarUsuario(dadosParaAtualizar, { parcial: true });
@@ -79,53 +79,53 @@ function atualizarUsuario(id, dadosParaAtualizar) {
 
   const dados = validacao.dados;
   if (dados.email) {
-    const existe = repositorio.buscarUsuarioPorEmail(dados.email);
+    const existe = await repositorio.buscarUsuarioPorEmail(dados.email);
     if (existe && existe.id !== usuario.id) throw new ErroNegocio(409, 'E-mail já cadastrado');
   }
 
-  const resultado = repositorio.atualizarUsuario(id, dados);
+  const resultado = await repositorio.atualizarUsuario(id, dados);
   if (resultado.ultimoGerenteProtegido) {
     throw new ErroNegocio(409, 'Não é possível remover ou desativar o último gerente ativo.');
   }
   return resultado.usuario;
 }
 
-function desativarUsuario(id, solicitanteId) {
-  const usuario = buscarUsuarioPorId(id);
+async function desativarUsuario(id, solicitanteId) {
+  const usuario = await buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
   if (usuario.id === Number(solicitanteId))
     throw new ErroNegocio(400, 'Não é permitido desativar a própria conta.');
 
-  const resultado = repositorio.desativarUsuario(id);
+  const resultado = await repositorio.desativarUsuario(id);
   if (resultado.ultimoGerenteProtegido) {
     throw new ErroNegocio(409, 'Não é possível desativar o último gerente ativo.');
   }
   return resultado.usuario;
 }
 
-function reativarUsuario(id) {
-  const usuario = buscarUsuarioPorId(id);
+async function reativarUsuario(id) {
+  const usuario = await buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
   return repositorio.reativarUsuario(id);
 }
 
-function salvarNovaSenha(id, novaSenha) {
+async function salvarNovaSenha(id, novaSenha) {
   if (!validarSenha(novaSenha)) {
     throw new ErroNegocio(400, 'A nova senha deve ter pelo menos 6 caracteres.');
   }
-  const usuario = buscarUsuarioPorId(id);
+  const usuario = await buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
 
-  repositorio.atualizarSenha(id, bcrypt.hashSync(novaSenha, 10));
+  await repositorio.atualizarSenha(id, bcrypt.hashSync(novaSenha, 10));
   return { senha_alterada: true };
 }
 
-function trocarSenha(id, senhaAtual, novaSenha) {
+async function trocarSenha(id, senhaAtual, novaSenha) {
   if (typeof senhaAtual !== 'string') {
     throw new ErroNegocio(400, 'As senhas são obrigatórias e devem ser textos.');
   }
 
-  const usuario = buscarUsuarioPorId(id);
+  const usuario = await buscarUsuarioPorId(id);
   if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
   if (!bcrypt.compareSync(senhaAtual, usuario.senha_hash))
     throw new ErroNegocio(400, 'Senha atual incorreta');
@@ -133,23 +133,23 @@ function trocarSenha(id, senhaAtual, novaSenha) {
   return salvarNovaSenha(id, novaSenha);
 }
 
-function redefinirSenha(id, novaSenha, solicitanteId) {
+async function redefinirSenha(id, novaSenha, solicitanteId) {
   if (Number(id) === Number(solicitanteId)) {
     throw new ErroNegocio(400, 'Use a rota de troca da própria senha.');
   }
   return salvarNovaSenha(id, novaSenha);
 }
 
-function criarUsuario(data) {
+async function criarUsuario(data) {
   const validacao = validarUsuario(data);
   if (validacao.erro) throw new ErroNegocio(400, validacao.erro);
   if (!validarSenha(data.senha))
     throw new ErroNegocio(400, 'A senha deve ter pelo menos 6 caracteres.');
 
-  const existe = repositorio.buscarUsuarioPorEmail(validacao.dados.email);
+  const existe = await repositorio.buscarUsuarioPorEmail(validacao.dados.email);
   if (existe) throw new ErroNegocio(409, 'E-mail já cadastrado');
 
-  const usuario = repositorio.criarUsuario({ ...validacao.dados, senha: data.senha });
+  const usuario = await repositorio.criarUsuario({ ...validacao.dados, senha: data.senha });
   return { id: usuario.id };
 }
 

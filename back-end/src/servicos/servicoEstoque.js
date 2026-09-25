@@ -92,7 +92,7 @@ function validarEntrada(produto, b) {
   return null;
 }
 
-function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
+async function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
   if (
     arguments.length === 1 &&
     (filtros === null || filtros === undefined || typeof filtros === 'number')
@@ -105,36 +105,36 @@ function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
     Number(limit) || 20,
   );
 }
-function listarAlertas() {
+async function listarAlertas() {
   return repositorioEstoque.listarAlertas();
 }
-function listarRastreabilidade(id = null) {
+async function listarRastreabilidade(id = null) {
   return repositorioEstoque.listarRastreabilidade(id);
 }
-function listarNotificacoes(setor = null) {
+async function listarNotificacoes(setor = null) {
   return repositorioEstoque.listarNotificacoes(setor);
 }
-function marcarNotificacaoLida(id) {
+async function marcarNotificacaoLida(id) {
   return repositorioEstoque.marcarNotificacaoLida(id);
 }
-function marcarAlertaLido(id) {
+async function marcarAlertaLido(id) {
   return repositorioEstoque.marcarAlertaLido(id);
 }
 
-function verificarEstoqueMinimo(produto) {
+async function verificarEstoqueMinimo(produto) {
   const estoqueBaixoAgora = estoqueBaixo(produto, produto.estoque_atual);
   if (estoqueBaixoAgora) {
-    repositorioEstoque.adicionarAlerta({
+    await repositorioEstoque.adicionarAlerta({
       produto_id: Number(produto.id),
       mensagem: `Estoque baixo para ${produto.nome}`,
     });
   } else {
-    repositorioEstoque.fecharAlertasAbertos(produto.id);
+    await repositorioEstoque.fecharAlertasAbertos(produto.id);
   }
   return estoqueBaixoAgora;
 }
 
-function registrarEntrada(
+async function registrarEntrada(
   produtoId,
   quantidade,
   fornecedorId,
@@ -143,7 +143,7 @@ function registrarEntrada(
   itens,
   body = {},
 ) {
-  const produto = repositorioProduto.buscarProdutoPorId(produtoId);
+  const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
   const itensRastreaveis =
@@ -165,16 +165,16 @@ function registrarEntrada(
   if (!fornecedorId && !body.fornecedor_id)
     return erro(400, 'Fornecedor é obrigatório no recebimento.');
   fornecedorId = fornecedorId || body.fornecedor_id;
-  if (!repositorioFornecedor.buscarFornecedorPorId(fornecedorId))
+  if (!(await repositorioFornecedor.buscarFornecedorPorId(fornecedorId)))
     return erro(400, 'Fornecedor informado não existe.');
   const n = Number(quantidade),
     novo = Number(produto.estoque_atual) + n,
     agora = new Date().toISOString();
   let mov;
   try {
-    mov = executarEmTransacao(() => {
-      repositorioProduto.atualizarEstoqueProduto(produtoId, novo);
-      const movimentacao = repositorioEstoque.adicionarMovimentacao({
+    mov = await executarEmTransacao(async () => {
+      await repositorioProduto.atualizarEstoqueProduto(produtoId, novo);
+      const movimentacao = await repositorioEstoque.adicionarMovimentacao({
         produto_id: Number(produtoId),
         usuario_id: usuarioId,
         tipo: 'ENTRADA',
@@ -198,7 +198,7 @@ function registrarEntrada(
             ? Array.from({ length: n }, () => origemItens[0])
             : origemItens;
         for (const item of itens)
-          repositorioEstoque.adicionarRastreabilidade({
+          await repositorioEstoque.adicionarRastreabilidade({
             produto_id: Number(produtoId),
             movimentacao_id: movimentacao.id,
             tipo,
@@ -216,7 +216,7 @@ function registrarEntrada(
       return erro(409, 'Número de série ou identificador único já cadastrado.');
     throw error;
   }
-  verificarEstoqueMinimo({ ...produto, estoque_atual: novo });
+  await verificarEstoqueMinimo({ ...produto, estoque_atual: novo });
   return sucesso(201, 'Entrada registrada com sucesso.', {
     movimentacao_id: mov.id,
     produto_id: Number(produtoId),
@@ -225,8 +225,8 @@ function registrarEntrada(
   });
 }
 
-function registrarSaida(produtoId, quantidade, destinatario, motivo, usuarioId, body = {}) {
-  const produto = repositorioProduto.buscarProdutoPorId(produtoId);
+async function registrarSaida(produtoId, quantidade, destinatario, motivo, usuarioId, body = {}) {
+  const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
   const validacao =
@@ -241,8 +241,8 @@ function registrarSaida(produtoId, quantidade, destinatario, motivo, usuarioId, 
   const novoEstoque = produto.estoque_atual - quantidadeNumerica,
     agora = new Date().toISOString();
   const tipo = tipoRastreabilidade(produto);
-  const disponiveis = repositorioEstoque
-    .listarRastreabilidade(produtoId)
+  const disponiveis = (await repositorioEstoque
+    .listarRastreabilidade(produtoId))
     .filter((item) => item.status === 'EM_ESTOQUE');
   const idsSolicitados = Array.isArray(body.rastreabilidade_ids)
     ? body.rastreabilidade_ids.map(Number)
@@ -273,9 +273,9 @@ function registrarSaida(produtoId, quantidade, destinatario, motivo, usuarioId, 
     if (tipo !== 'NENHUMA' && rast.length !== quantidadeNumerica)
       return erro(400, `Não há ${quantidadeNumerica} item(ns) de rastreabilidade disponível(is).`);
   }
-  const movimentacao = executarEmTransacao(() => {
-    repositorioProduto.atualizarEstoqueProduto(produtoId, novoEstoque);
-    const registro = repositorioEstoque.adicionarMovimentacao({
+  const movimentacao = await executarEmTransacao(async () => {
+    await repositorioProduto.atualizarEstoqueProduto(produtoId, novoEstoque);
+    const registro = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(produtoId),
       usuario_id: usuarioId,
       tipo: 'SAIDA',
@@ -291,21 +291,21 @@ function registrarSaida(produtoId, quantidade, destinatario, motivo, usuarioId, 
       estoque_anterior: produto.estoque_atual,
       estoque_novo: novoEstoque,
     });
-    repositorioEstoque.atualizarStatusRastreabilidadePorIds(
+    await repositorioEstoque.atualizarStatusRastreabilidadePorIds(
       rast.map((item) => item.id),
       'SAIDA',
     );
     return registro;
   });
-  const alerta = verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
+  const alerta = await verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
   return sucesso(201, 'Saída de estoque registrada com sucesso.', {
     movimentacao_id: movimentacao.id,
     novo_estoque_total: novoEstoque,
     alerta_gerado: alerta,
   });
 }
-function registrarAjusteManual(produtoId, novaQuantidade, justificativa, usuarioId) {
-  const produto = repositorioProduto.buscarProdutoPorId(produtoId);
+async function registrarAjusteManual(produtoId, novaQuantidade, justificativa, usuarioId) {
+  const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
   const quantidadeNova = Number(novaQuantidade);
@@ -315,9 +315,9 @@ function registrarAjusteManual(produtoId, novaQuantidade, justificativa, usuario
     return erro(400, 'justificativa é obrigatória.');
   const estoqueAnterior = produto.estoque_atual;
   const data = new Date().toISOString();
-  const movimentacao = executarEmTransacao(() => {
-    repositorioProduto.atualizarEstoqueProduto(produtoId, quantidadeNova);
-    const registro = repositorioEstoque.adicionarMovimentacao({
+  const movimentacao = await executarEmTransacao(async () => {
+    await repositorioProduto.atualizarEstoqueProduto(produtoId, quantidadeNova);
+    const registro = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(produtoId),
       usuario_id: usuarioId,
       tipo: 'AJUSTE_MANUAL',
@@ -328,7 +328,7 @@ function registrarAjusteManual(produtoId, novaQuantidade, justificativa, usuario
       estoque_anterior: estoqueAnterior,
       estoque_novo: quantidadeNova,
     });
-    repositorioEstoque.adicionarAuditoria({
+    await repositorioEstoque.adicionarAuditoria({
       produto_id: Number(produtoId),
       usuario_id: usuarioId,
       acao: 'AJUSTE_MANUAL',
@@ -339,7 +339,7 @@ function registrarAjusteManual(produtoId, novaQuantidade, justificativa, usuario
     });
     return registro;
   });
-  const alerta = verificarEstoqueMinimo({
+  const alerta = await verificarEstoqueMinimo({
     ...produto,
     estoque_atual: quantidadeNova,
   });
@@ -352,8 +352,8 @@ function registrarAjusteManual(produtoId, novaQuantidade, justificativa, usuario
     alerta_gerado: alerta,
   });
 }
-function registrarDevolucao(d, usuarioId) {
-  const produto = repositorioProduto.buscarProdutoPorId(d.produto_id);
+async function registrarDevolucao(d, usuarioId) {
+  const produto = await repositorioProduto.buscarProdutoPorId(d.produto_id);
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
   let e =
@@ -376,8 +376,8 @@ function registrarDevolucao(d, usuarioId) {
     rast =
       tipo === 'NENHUMA'
         ? []
-        : repositorioEstoque
-            .listarRastreabilidade(produto.id)
+        : (await repositorioEstoque
+            .listarRastreabilidade(produto.id))
             .filter((item) => item.status === 'EM_ESTOQUE' && ids.includes(Number(item.id)));
   if (tipo !== 'NENHUMA' && (ids.length !== n || rast.length !== n))
     return erro(
@@ -389,16 +389,16 @@ function registrarDevolucao(d, usuarioId) {
   const reap = d.origem === 'CLIENTE' && d.estado_produto === 'INTACTO';
   const delta = d.origem === 'PARA_FORNECEDOR' ? -n : reap ? n : 0;
   const novoEstoque = Number(produto.estoque_atual) + delta;
-  const { devolucao: dev, movimentacao: mov } = executarEmTransacao(() => {
+  const { devolucao: dev, movimentacao: mov } = await executarEmTransacao(async () => {
     const agora = new Date().toISOString();
-    const devolucao = repositorioEstoque.adicionarDevolucao({
+    const devolucao = await repositorioEstoque.adicionarDevolucao({
       ...d,
       usuario_id: usuarioId,
       reaproveitavel: reap,
       data_devolucao: agora,
     });
-    if (delta) repositorioProduto.atualizarEstoqueProduto(produto.id, novoEstoque);
-    const movimentacao = repositorioEstoque.adicionarMovimentacao({
+    if (delta) await repositorioProduto.atualizarEstoqueProduto(produto.id, novoEstoque);
+    const movimentacao = await repositorioEstoque.adicionarMovimentacao({
       produto_id: produto.id,
       usuario_id: usuarioId,
       tipo: 'DEVOLUCAO',
@@ -416,13 +416,13 @@ function registrarDevolucao(d, usuarioId) {
         : d.origem === 'PARA_FORNECEDOR'
           ? 'SAIDA'
           : 'EM_ESTOQUE';
-    repositorioEstoque.atualizarStatusRastreabilidadePorIds(
+    await repositorioEstoque.atualizarStatusRastreabilidadePorIds(
       rast.map((item) => item.id),
       status,
     );
     return { devolucao, movimentacao };
   });
-  verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
+  await verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
   return sucesso(201, 'Devolução registrada com sucesso.', {
     devolucao_id: dev.id,
     movimentacao_id: mov.id,
@@ -430,24 +430,24 @@ function registrarDevolucao(d, usuarioId) {
     novo_estoque_total: novoEstoque,
   });
 }
-function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
-  const origem = repositorioEstoque.buscarMovimentacaoPorId(movimentacaoId);
+async function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
+  const origem = await repositorioEstoque.buscarMovimentacaoPorId(movimentacaoId);
 
   if (!origem) return erro(404, 'Movimentação de origem não encontrada.');
   if (origem.tipo === 'ESTORNO')
     return erro(400, 'Não é possível estornar uma movimentação de estorno.');
   if (!motivo || !String(motivo).trim()) return erro(400, 'motivo é obrigatório para o estorno.');
 
-  const produto = repositorioProduto.buscarProdutoPorId(origem.produto_id);
+  const produto = await repositorioProduto.buscarProdutoPorId(origem.produto_id);
   if (!produto) return erro(404, 'Produto da movimentação não encontrado.');
 
   const deltaOriginal = Number(origem.quantidade || 0);
   const reversao = -deltaOriginal;
   const novoEstoque = Number(produto.estoque_atual) + reversao;
 
-  const estorno = executarEmTransacao(() => {
-    repositorioProduto.atualizarEstoqueProduto(origem.produto_id, novoEstoque);
-    const movimentacao = repositorioEstoque.adicionarMovimentacao({
+  const estorno = await executarEmTransacao(async () => {
+    await repositorioProduto.atualizarEstoqueProduto(origem.produto_id, novoEstoque);
+    const movimentacao = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(origem.produto_id),
       usuario_id: Number(usuarioId),
       tipo: 'ESTORNO',
@@ -468,11 +468,11 @@ function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
       movimentacao_origem_id: Number(origem.id),
     });
 
-    repositorioEstoque.atualizarStatusRastreabilidadePorMovimentacao(origem.id, 'EM_ESTOQUE');
+    await repositorioEstoque.atualizarStatusRastreabilidadePorMovimentacao(origem.id, 'EM_ESTOQUE');
     return movimentacao;
   });
 
-  verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
+  await verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
   return sucesso(201, 'Estorno registrado com sucesso.', {
     movimentacao_id: estorno.id,
     movimentacao_origem_id: Number(origem.id),
@@ -483,13 +483,13 @@ function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
     estoque_atual: novoEstoque,
   });
 }
-function obterResumo() {
+async function obterResumo() {
   return repositorioEstoque.resumo();
 }
-function obterRelatorio(filtros = {}) {
+async function obterRelatorio(filtros = {}) {
   return repositorioEstoque.relatorio(filtros);
 }
-function buscarPorCodigo(codigo) {
+async function buscarPorCodigo(codigo) {
   return repositorioProduto.buscarPorCodigo(codigo);
 }
 module.exports = {

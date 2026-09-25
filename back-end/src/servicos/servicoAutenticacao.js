@@ -3,8 +3,9 @@ const bcrypt = require('bcryptjs');
 const { SECRET } = require('../configuracoes');
 const repositorio = require('../repositorios/repositorioUsuario');
 const ErroNegocio = require('../erros/ErroNegocio');
+const asyncHandler = require('../middlewares/asyncHandler');
 
-function validarAutenticacao(req, res, next) {
+async function validarAutenticacao(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -12,13 +13,17 @@ function validarAutenticacao(req, res, next) {
     return res.status(401).json({ status: 'erro', mensagem: 'Token ausente' });
   }
 
+  let payload;
   try {
-    const payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
-    const usuario = repositorio.buscarUsuarioPorId(payload.id);
+    payload = jwt.verify(token, SECRET, { algorithms: ['HS256'] });
+  } catch {
+    return res.status(401).json({ status: 'erro', mensagem: 'Token inválido' });
+  }
+  try {
+    const usuario = await repositorio.buscarUsuarioPorId(payload.id);
     if (!usuario || !usuario.ativo) {
       return res.status(401).json({ status: 'erro', mensagem: 'Usuário inválido ou inativo' });
     }
-
     req.user = {
       id: usuario.id,
       nome: usuario.nome,
@@ -29,7 +34,7 @@ function validarAutenticacao(req, res, next) {
     };
     return next();
   } catch (error) {
-    return res.status(401).json({ status: 'erro', mensagem: 'Token inválido' });
+    return next(error);
   }
 }
 
@@ -50,13 +55,13 @@ function criarToken(usuario) {
   );
 }
 
-function realizarLogin(email, senha) {
+async function realizarLogin(email, senha) {
   if (typeof email !== 'string' || !email.trim() || typeof senha !== 'string') {
     throw new ErroNegocio(400, 'E-mail e senha são obrigatórios e devem ser textos.');
   }
 
   email = email.trim().toLowerCase();
-  const usuario = repositorio.buscarUsuarioPorEmail(email);
+  const usuario = await repositorio.buscarUsuarioPorEmail(email);
 
   if (!usuario) {
     throw new ErroNegocio(401, 'Credenciais inválidas');
@@ -75,21 +80,21 @@ function realizarLogin(email, senha) {
 
     if (tentativasFalhas >= 3) {
       bloqueadoUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      repositorio.atualizarStatusLogin(email, 0, bloqueadoUntil);
+      await repositorio.atualizarStatusLogin(email, 0, bloqueadoUntil);
       throw new ErroNegocio(403, 'Conta temporariamente bloqueada');
     }
 
-    repositorio.atualizarStatusLogin(email, tentativasFalhas, null);
+    await repositorio.atualizarStatusLogin(email, tentativasFalhas, null);
     throw new ErroNegocio(401, 'Credenciais inválidas');
   }
 
-  repositorio.atualizarStatusLogin(email, 0, null);
+  await repositorio.atualizarStatusLogin(email, 0, null);
 
   return { token: criarToken(usuario) };
 }
 
 module.exports = {
-  validarAutenticacao,
+  validarAutenticacao: asyncHandler(validarAutenticacao),
   autorizarPerfil,
   realizarLogin,
 };

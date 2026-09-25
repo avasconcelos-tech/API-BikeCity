@@ -2,9 +2,9 @@ const repositorioProduto = require('../repositorios/repositorioProduto');
 const repositorioFornecedor = require('../repositorios/repositorioFornecedor');
 const ErroNegocio = require('../erros/ErroNegocio');
 
-function validarFornecedorExiste(id) {
+async function validarFornecedorExiste(id) {
   if (id === undefined || id === null || id === '') return 'Fornecedor é obrigatório.';
-  return repositorioFornecedor.buscarFornecedorPorId(id)
+  return (await repositorioFornecedor.buscarFornecedorPorId(id))
     ? null
     : 'Fornecedor informado não existe.';
 }
@@ -29,13 +29,13 @@ function dimensoesObrigatorias(categoria, dimensoes) {
   );
 }
 
-function buscarProdutoPorId(id) {
-  const produto = repositorioProduto.buscarProdutoPorId(id);
+async function buscarProdutoPorId(id) {
+  const produto = await repositorioProduto.buscarProdutoPorId(id);
   if (!produto) throw new ErroNegocio(404, 'Produto não encontrado');
   return produto;
 }
 
-function criarProduto(data) {
+async function criarProduto(data) {
   for (const [campo, nome] of [
     ['nome', 'Nome'],
     ['codigo_interno', 'Código interno'],
@@ -54,7 +54,7 @@ function criarProduto(data) {
     throw new ErroNegocio(400, 'Estoque mínimo deve ser um número inteiro maior ou igual a 0.');
   }
 
-  const erroFornecedor = validarFornecedorExiste(data.fornecedor_id);
+  const erroFornecedor = await validarFornecedorExiste(data.fornecedor_id);
   if (erroFornecedor) throw new ErroNegocio(400, erroFornecedor);
   if (Number(data.custo) < 0) throw new ErroNegocio(400, 'Custo não pode ser negativo.');
 
@@ -63,7 +63,7 @@ function criarProduto(data) {
   }
 
   try {
-    return repositorioProduto.criarProduto({ ...data, estoque_minimo: estoqueMinimo });
+    return await repositorioProduto.criarProduto({ ...data, estoque_minimo: estoqueMinimo });
   } catch (erro) {
     if (String(erro.message).includes('UNIQUE'))
       throw new ErroNegocio(409, 'Código interno já cadastrado.');
@@ -71,8 +71,8 @@ function criarProduto(data) {
   }
 }
 
-function atualizarProduto(id, dados) {
-  const produtoAtual = buscarProdutoPorId(id);
+async function atualizarProduto(id, dados) {
+  const produtoAtual = await buscarProdutoPorId(id);
   if (
     Object.hasOwn(dados, 'estoque_minimo') &&
     validarEstoqueMinimo(dados.estoque_minimo) === null
@@ -90,11 +90,11 @@ function atualizarProduto(id, dados) {
     throw new ErroNegocio(400, 'Dimensões são obrigatórias para veículos.');
   }
   if (Object.hasOwn(dados, 'fornecedor_id')) {
-    const erroFornecedor = validarFornecedorExiste(dados.fornecedor_id);
+    const erroFornecedor = await validarFornecedorExiste(dados.fornecedor_id);
     if (erroFornecedor) throw new ErroNegocio(400, erroFornecedor);
   }
   try {
-    return repositorioProduto.atualizarProduto(id, dados);
+    return await repositorioProduto.atualizarProduto(id, dados);
   } catch (erro) {
     if (String(erro.message).includes('UNIQUE'))
       throw new ErroNegocio(409, 'Código interno já cadastrado.');
@@ -102,16 +102,16 @@ function atualizarProduto(id, dados) {
   }
 }
 
-function inativarProduto(id) {
-  const produto = buscarProdutoPorId(id);
+async function inativarProduto(id) {
+  const produto = await buscarProdutoPorId(id);
   if (Number(produto.estoque_atual) > 0) {
     throw new ErroNegocio(400, 'Não é possível inativar produto com saldo em estoque.');
   }
   return repositorioProduto.inativarProduto(id);
 }
 
-function reativarProduto(id) {
-  buscarProdutoPorId(id);
+async function reativarProduto(id) {
+  await buscarProdutoPorId(id);
   return repositorioProduto.reativarProduto(id);
 }
 

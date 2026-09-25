@@ -42,13 +42,13 @@ function listarFornecedores(incluirInativos = false) {
   return repositorio.listarFornecedores(incluirInativos);
 }
 
-function buscarFornecedorPorId(id) {
-  const fornecedor = repositorio.buscarFornecedorPorId(id);
+async function buscarFornecedorPorId(id) {
+  const fornecedor = await repositorio.buscarFornecedorPorId(id);
   if (!fornecedor) throw new ErroNegocio(404, 'Fornecedor não encontrado');
   return fornecedor;
 }
 
-function criarFornecedor(data) {
+async function criarFornecedor(data) {
   const nome = data?.nome;
   if (!validarNome(nome)) {
     throw new ErroNegocio(400, 'Nome do fornecedor é obrigatório');
@@ -56,11 +56,11 @@ function criarFornecedor(data) {
 
   const cnpj = normalizarCnpj(data?.cnpj);
   if (cnpj === undefined) return erroCnpj(400, 'CNPJ inválido');
-  if (cnpj && repositorio.existeCnpj(cnpj)) return erroCnpj(409, 'CNPJ já cadastrado');
+  if (cnpj && (await repositorio.existeCnpj(cnpj))) return erroCnpj(409, 'CNPJ já cadastrado');
 
   let fornecedor;
   try {
-    fornecedor = repositorio.criarFornecedor({
+    fornecedor = await repositorio.criarFornecedor({
       nome: nome.trim(),
       cnpj,
       contato: data?.contato ?? null,
@@ -73,16 +73,16 @@ function criarFornecedor(data) {
   return fornecedor;
 }
 
-function atualizarFornecedor(id, data) {
+async function atualizarFornecedor(id, data) {
   const nome = data?.nome;
   if (!validarNome(nome)) throw new ErroNegocio(400, 'Nome do fornecedor é obrigatório');
   const cnpj = normalizarCnpj(data?.cnpj);
   if (cnpj === undefined) return erroCnpj(400, 'CNPJ inválido');
-  if (cnpj && repositorio.existeCnpj(cnpj, id)) return erroCnpj(409, 'CNPJ já cadastrado');
+  if (cnpj && (await repositorio.existeCnpj(cnpj, id))) return erroCnpj(409, 'CNPJ já cadastrado');
 
   let fornecedor;
   try {
-    fornecedor = repositorio.atualizarFornecedor(id, {
+    fornecedor = await repositorio.atualizarFornecedor(id, {
       nome: nome.trim(),
       cnpj,
       contato: data?.contato ?? null,
@@ -95,8 +95,8 @@ function atualizarFornecedor(id, data) {
   return fornecedor;
 }
 
-function inativarFornecedor(id) {
-  const resultado = repositorio.inativarFornecedor(id);
+async function inativarFornecedor(id) {
+  const resultado = await repositorio.inativarFornecedor(id);
   if (!resultado.fornecedor && resultado.possuiProdutosAtivos) {
     throw new ErroNegocio(409, 'Não é possível inativar fornecedor vinculado a produto ativo.');
   }

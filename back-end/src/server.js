@@ -4,17 +4,16 @@ const os = require('os');
 
 const PORT = process.env.PORT || 5500;
 
-function resetarEstado() {
-  if (process.env.NODE_ENV === 'test') conexaoBanco.resetarBancoParaTestes();
+async function resetarEstado() {
+  if (process.env.NODE_ENV === 'test') await conexaoBanco.resetarBancoParaTestes();
 }
 
 async function startServer() {
   try {
-    // Valida se o banco SQLite foi instanciado e responde a uma consulta básica
-    const db = conexaoBanco.obterBanco();
-    db.prepare('SELECT 1').get();
+    await conexaoBanco.inicializarBanco();
+    await conexaoBanco.consultar('SELECT 1');
 
-    console.log('Conexão com SQLite estabelecida com sucesso! ✔️');
+    console.log('Conexão com MySQL/MariaDB estabelecida com sucesso! ✔️');
 
     const HOST = process.env.HOST || '0.0.0.0';
 
@@ -46,4 +45,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { app, resetarEstado };
+module.exports = { app, resetarEstado, inicializarBanco: conexaoBanco.inicializarBanco };

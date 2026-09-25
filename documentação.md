@@ -124,11 +124,13 @@ Log de alterações manuais e contagens de inventário.
 | `justificativa` | TEXT     | SIM  |       |                | Motivo da alteração manual     |
 | `data`          | DATETIME | NÃO  |       |                |                                |
 
-### Integridade referencial e migrações do SQLite
+### Integridade referencial e migrações MySQL/MariaDB
 
-O SQLite é inicializado com `PRAGMA foreign_keys = ON`. Produtos, movimentações, rastreabilidade, alertas, auditoria, devoluções e notificações validam suas referências a produtos, usuários, fornecedores e movimentações. Referências opcionais usam `ON DELETE SET NULL`; referências obrigatórias preservam o histórico e impedem a exclusão física do registro relacionado. O sistema utiliza inativação lógica para produtos, fornecedores e usuários.
+O backend usa MySQL 8.0+ ou MariaDB 10.3+ com tabelas InnoDB. O esquema canônico e a versão inicial estão em `back-end/sql/schema.sql`; a carga demonstrativa separada está em `back-end/sql/seed.sql`. O backend aplica o esquema idempotente ao iniciar e executa a carga apenas em ambientes `development` e `test`. O banco e o usuário com permissões para criar tabelas/índices devem existir antes da inicialização; configure `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME` no ambiente, sem armazenar senhas no repositório.
 
-As versões aplicadas ficam registradas em `schema_versao`. Novas migrações devem ser adicionadas em `back-end/src/repositorios/migracoes/` com nome numérico sequencial (por exemplo, `003_nome_da_migracao.js`) e exportar `up(db)`. Cada migração é executada em transação e sua versão só é gravada após sucesso. A migração das FKs aborta com a identificação dos registros órfãos encontrados, sem removê-los.
+Produtos, movimentações, rastreabilidade, alertas, auditoria, devoluções e notificações validam as referências relacionais a produtos, usuários, fornecedores e movimentações. Referências opcionais usam `ON DELETE SET NULL`; referências obrigatórias preservam o histórico e impedem a exclusão física do registro relacionado. O sistema utiliza inativação lógica para produtos, fornecedores e usuários. As versões aplicadas ficam registradas em `schema_versao`; novas migrações devem ser scripts SQL MySQL/MariaDB numerados e encadeados com o esquema canônico, em vez de migrações JavaScript específicas do SQLite.
+
+Não há importação automática de arquivos SQLite antigos. Para migrar dados legados, exporte cada tabela para CSV, crie o esquema MySQL a partir do SQL canônico, importe respeitando as chaves estrangeiras e valide contagens/referências antes de apontar o backend para o novo banco.
 
 ---
 

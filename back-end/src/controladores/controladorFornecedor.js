@@ -1,41 +1,42 @@
 const servicoFornecedor = require('../servicos/servicoFornecedor');
+const asyncHandler = require('../middlewares/asyncHandler');
 
-function listarFornecedores(req, res) {
+async function listarFornecedores(req, res) {
   const incluirInativos = req.query.incluirInativos === 'true';
-  const fornecedores = servicoFornecedor.listarFornecedores(incluirInativos);
+  const fornecedores = await servicoFornecedor.listarFornecedores(incluirInativos);
   return res.status(200).json({ status: 'sucesso', dados: fornecedores });
 }
 
-function buscarFornecedorPorId(req, res) {
-  const fornecedor = servicoFornecedor.buscarFornecedorPorId(req.params.id);
+async function buscarFornecedorPorId(req, res) {
+  const fornecedor = await servicoFornecedor.buscarFornecedorPorId(req.params.id);
   return res.status(200).json({ status: 'sucesso', dados: fornecedor });
 }
 
-function criarFornecedor(req, res) {
-  const fornecedor = servicoFornecedor.criarFornecedor(req.body);
+async function criarFornecedor(req, res) {
+  const fornecedor = await servicoFornecedor.criarFornecedor(req.body);
   return res
     .status(201)
     .json({ status: 'sucesso', mensagem: 'Fornecedor cadastrado com sucesso', dados: fornecedor });
 }
 
-function atualizarFornecedor(req, res) {
-  const fornecedor = servicoFornecedor.atualizarFornecedor(req.params.id, req.body);
+async function atualizarFornecedor(req, res) {
+  const fornecedor = await servicoFornecedor.atualizarFornecedor(req.params.id, req.body);
   return res
     .status(200)
     .json({ status: 'sucesso', mensagem: 'Fornecedor atualizado com sucesso', dados: fornecedor });
 }
 
-function inativarFornecedor(req, res) {
-  const fornecedor = servicoFornecedor.inativarFornecedor(req.params.id);
+async function inativarFornecedor(req, res) {
+  const fornecedor = await servicoFornecedor.inativarFornecedor(req.params.id);
   return res
     .status(200)
     .json({ status: 'sucesso', mensagem: 'Fornecedor inativado com sucesso', dados: fornecedor });
 }
 
 module.exports = {
-  listarFornecedores,
-  buscarFornecedorPorId,
-  criarFornecedor,
-  atualizarFornecedor,
-  inativarFornecedor,
+  listarFornecedores: asyncHandler(listarFornecedores),
+  buscarFornecedorPorId: asyncHandler(buscarFornecedorPorId),
+  criarFornecedor: asyncHandler(criarFornecedor),
+  atualizarFornecedor: asyncHandler(atualizarFornecedor),
+  inativarFornecedor: asyncHandler(inativarFornecedor),
 };
