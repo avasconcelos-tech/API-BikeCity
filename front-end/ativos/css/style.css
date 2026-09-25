@@ -163,6 +163,11 @@ button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 .btn-secondary { background: var(--green-700); }
 .btn-danger { background: var(--danger); }
 
+#toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: grid; gap: 10px; width: min(380px, calc(100vw - 40px)); }
+.toast { padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font-weight: 650; animation: toast-in .18s ease-out; }
+.toast-erro { border-color: #fecaca; color: var(--danger); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
 .table-responsive { width: 100%; max-width: 100%; overflow-x: auto; border-radius: var(--radius); -webkit-overflow-scrolling: touch; }
 table { width: 100%; max-width: none; min-width: 720px; border-collapse: separate; border-spacing: 0; border-radius: var(--radius); overflow: hidden; }
 .products-table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }

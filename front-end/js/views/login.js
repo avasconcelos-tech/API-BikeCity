@@ -1,6 +1,7 @@
 import { postLogin } from '../api/services.js';
 import { salvarToken } from '../utilitarios/auth.js';
 import { habilitarMostrarSenha } from '../utilitarios/mostrarSenha.js';
+import { mostrarToast } from '../utilitarios/ui.js';
 
 const formLogin = document.getElementById('form-login');
 habilitarMostrarSenha('senha', 'mostrar-senha');
@@ -21,7 +22,7 @@ formLogin.addEventListener('submit', async (e) => {
 
         window.location.href = './dashboard.html';
     } catch (error) {
-        alert(error.message || 'Falha ao autenticar.');
+        mostrarToast(error.message || 'Falha ao autenticar.', 'erro');
     } finally {
         btnSubmit.disabled = false;
         btnSubmit.textContent = 'Entrar';

@@ -2,6 +2,7 @@ import { checarAutenticacao, obterUsuarioLogado, removerToken } from '../utilita
 import { apiFetch } from '../api/client.js';
 import { getProdutos } from '../api/services.js';
 import { formatarMoeda } from '../utilitarios/formatters.js';
+import { configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
@@ -23,8 +24,7 @@ function abrirProdutos(titulo, lista) {
     $('tbody-dashboard-produtos').innerHTML = lista.length
         ? lista.map((produto) => `<tr><td>${produto.nome}</td><td>${produto.categoria}</td><td>${produto.estoque_atual}</td><td>${produto.localizacao_deposito || '-'}</td></tr>`).join('')
         : '<tr><td colspan="4">Nenhum produto encontrado.</td></tr>';
-    $('modal-dashboard-produtos').classList.add('active');
-    $('modal-dashboard-produtos').setAttribute('aria-hidden', 'false');
+    abrirModal($('modal-dashboard-produtos'), 'btn-fechar-dashboard-produtos');
 }
 
 function abrirRelatorioEstoque() {
@@ -33,13 +33,11 @@ function abrirRelatorioEstoque() {
     $('tbody-dashboard-produtos').innerHTML = produtos.length
         ? produtos.map((produto) => `<tr><td>${produto.nome}</td><td>${produto.estoque_atual}</td><td>${formatarMoeda(produto.custo || 0)}</td></tr>`).join('')
         : '<tr><td colspan="3">Nenhuma peça encontrada.</td></tr>';
-    $('modal-dashboard-produtos').classList.add('active');
-    $('modal-dashboard-produtos').setAttribute('aria-hidden', 'false');
+    abrirModal($('modal-dashboard-produtos'), 'btn-fechar-dashboard-produtos');
 }
 
 function fecharProdutos() {
-    $('modal-dashboard-produtos').classList.remove('active');
-    $('modal-dashboard-produtos').setAttribute('aria-hidden', 'true');
+    fecharModal($('modal-dashboard-produtos'), 'card-total-produtos');
 }
 
 function ativarCard(id, acao) {
@@ -78,7 +76,5 @@ async function carregar() {
 }
 
 $('btn-fechar-dashboard-produtos').onclick = fecharProdutos;
-$('modal-dashboard-produtos').onclick = (evento) => {
-    if (evento.target === $('modal-dashboard-produtos')) fecharProdutos();
-};
+configurarModal($('modal-dashboard-produtos'), fecharProdutos);
 carregar();
