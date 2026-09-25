@@ -56,15 +56,9 @@ A estrutura do projeto está dividida em camadas:
 ```text
 API-BikeCity/
 ├── back-end/
-│   └── src/
-│       ├── app.js
-│       ├── server.js
-│       ├── configuracoes/
-│       ├── controladores/
-│       ├── repositorios/
-│       ├── rotas/
-│       ├── servicos/
-│       └── tests/
+│   ├── src/
+│   ├── tests/
+│   └── uploads/
 ├── front-end/
 │   ├── ativos/
 │   ├── js/
@@ -74,15 +68,10 @@ API-BikeCity/
 │   ├── produtos.html
 │   ├── relatorios.html
 │   └── usuarios.html
-├── uploads/
+├── .env.test
 ├── package.json
 ├── README.md
-├── README_REDE_LOCAL.md
-├── documentação.md
-├── iniciar-rede.bat
-├── liberar-porta-3000-firewall.bat
-├── database.sqlite
-└── Db_bikecity.sqlite.sql
+└── documentação.md
 ```
 
 ## Tecnologias utilizadas
@@ -99,9 +88,9 @@ API-BikeCity/
 
 ## Requisitos
 
-- Node.js 18 ou superior
+- Node.js 22 ou superior
 - npm
-- Ambiente Windows recomendado para uso local e rede interna
+- Compatível com Windows, macOS e Linux
 
 ## Como executar
 
@@ -111,16 +100,23 @@ API-BikeCity/
 npm install
 ```
 
-2. Inicie a aplicação:
+2. Crie o arquivo `.env` na raiz do projeto e defina um segredo JWT:
+
+```dotenv
+JWT_SECRET=defina-um-segredo-longo-e-aleatorio
+PORT=5500
+```
+
+3. Inicie a aplicação:
 
 ```bash
 npm start
 ```
 
-3. Acesse a interface no navegador:
+4. Acesse a interface no navegador. A porta padrão é `5500`; ela pode ser alterada pela variável `PORT`:
 
 ```text
-http://localhost:3000/login.html
+http://localhost:5500/login.html
 ```
 
 ## Usuário de teste
@@ -134,21 +130,20 @@ http://localhost:3000/login.html
 - `POST /api/v1/auth/login`
 - `GET /api/v1/produtos`
 - `POST /api/v1/produtos`
-- `GET /api/v1/estoque`
-- `POST /api/v1/estoque/entrada`
-- `POST /api/v1/estoque/saida`
+- `GET /api/v1/fornecedores`
+- `GET /api/v1/estoque/movimentacoes`
+- `POST /api/v1/estoque/entradas`
+- `POST /api/v1/estoque/saidas`
 - `GET /api/v1/dashboard/resumo`
-- `POST /api/v1/uploads`
+- `POST /api/v1/uploads/imagens`
 
 ## Testes
+
+Os testes carregam as variáveis do arquivo `.env.test` e usam `back-end/database.test.sqlite`, separado do banco de desenvolvimento. Esse arquivo de banco é local e ignorado pelo Git.
 
 ```bash
 npm test
 ```
-
-### Status atual
-
-A validação do projeto aponta 23 testes aprovados e 1 falha pendente relacionada à configuração do `JWT_SECRET` no ambiente. Isso indica a necessidade de padronizar a variável de ambiente para uso em desenvolvimento e produção.
 
 ## Observações complementares
 
