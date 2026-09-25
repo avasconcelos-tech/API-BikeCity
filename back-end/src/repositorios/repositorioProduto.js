@@ -13,9 +13,24 @@ function listarProdutos(incluirInativos = false) {
 function criarProduto(produtoInput) {
   const resultado = db.prepare(
     `INSERT INTO produtos (nome,codigo_interno,categoria,unidade_medida,localizacao_deposito,fornecedor_id,custo,dimensoes,estoque_atual,estoque_minimo,estado_montagem,ativo,tipo_rastreabilidade,demanda_prevista)
-     VALUES (?,?,?,?,?,?,?,?,0,5,?,1,?,?)`
-  ).run(produtoInput.nome,produtoInput.codigo_interno,produtoInput.categoria,produtoInput.unidade_medida,produtoInput.localizacao_deposito,produtoInput.fornecedor_id??null,produtoInput.custo??0,produtoInput.estado_montagem??'NAO_APLICA',produtoInput.tipo_rastreabilidade??'NENHUMA', produtoInput.demanda_prevista??0);
-  return { id:Number(resultado.lastInsertRowid), ...produtoInput, estoque_atual:0, ativo:true };
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(
+    produtoInput.nome,
+    produtoInput.codigo_interno,
+    produtoInput.categoria,
+    produtoInput.unidade_medida,
+    produtoInput.localizacao_deposito,
+    produtoInput.fornecedor_id ?? null,
+    produtoInput.custo ?? 0,
+    produtoInput.dimensoes ?? null,
+    produtoInput.estoque_atual ?? 0,
+    produtoInput.estoque_minimo ?? 0,
+    produtoInput.estado_montagem ?? 'NAO_APLICA',
+    produtoInput.ativo === undefined ? 1 : Number(Boolean(produtoInput.ativo)),
+    produtoInput.tipo_rastreabilidade ?? 'NENHUMA',
+    produtoInput.demanda_prevista ?? 0
+  );
+  return buscarProdutoPorId(Number(resultado.lastInsertRowid));
 }
 
 function buscarProdutoPorId(id) {

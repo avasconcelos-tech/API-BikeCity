@@ -16,6 +16,21 @@ function adicionarColunaSeFaltar(tabela, coluna, definicao) {
   }
 }
 
+function corrigirProdutosComColunasTrocadas() {
+  const resultado = db.prepare(`
+    UPDATE produtos
+    SET dimensoes = NULL,
+        estado_montagem = dimensoes,
+        tipo_rastreabilidade = estado_montagem,
+        demanda_prevista = CAST(tipo_rastreabilidade AS INTEGER)
+    WHERE demanda_prevista IS NULL
+      AND tipo_rastreabilidade GLOB '[0-9]*'
+      AND estado_montagem IN ('NENHUMA', 'BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA')
+      AND dimensoes IN ('NAO_APLICA', 'MONTADO', 'DESMONTADO')
+  `).run();
+  return resultado.changes;
+}
+
 function criarEstrutura() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -159,6 +174,7 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('auditoria', 'novo_valor', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'justificativa', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'data', 'TEXT');
+  corrigirProdutosComColunasTrocadas();
 }
 
 function seedDadosIniciais() {
@@ -182,13 +198,30 @@ function seedDadosIniciais() {
 }
 
 criarEstrutura();
-seedDadosIniciais();
+if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+  seedDadosIniciais();
+}
+
+function executarEmTransacao(fn) {
+  db.exec('BEGIN');
+  try {
+    const resultado = fn();
+    db.exec('COMMIT');
+    return resultado;
+  } catch (erro) {
+    db.exec('ROLLBACK');
+    throw erro;
+  }
+}
 
 const conexaoInstancia = {
   getDb: () => db,
+  executarEmTransacao,
   resetarBancoParaTestes: () => {
     db.exec(`DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`);
-    seedDadosIniciais();
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+      seedDadosIniciais();
+    }
   }
 };
 
