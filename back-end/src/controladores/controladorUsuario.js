@@ -44,6 +44,13 @@ function desativarUsuario(req, res) {
   return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: usuarioDesativado });
 }
 
+function reativarUsuario(req, res) {
+  const usuario = servicoUsuario.buscarUsuarioPorId(req.params.id);
+  if (!usuario) return res.status(404).json({ status: 'erro', mensagem: 'Usuário não encontrado' });
+  const usuarioReativado = servicoUsuario.reativarUsuario(req.params.id);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: usuarioReativado });
+}
+
 function trocarSenha(req, res) {
   const usuarioId = req.user.id;
   const resultado = servicoUsuario.trocarSenha(usuarioId, req.body.senhaAtual, req.body.novaSenha);
@@ -60,6 +67,7 @@ module.exports = {
   buscarUsuarioPorId,
   atualizarUsuario,
   desativarUsuario,
+  reativarUsuario,
   trocarSenha,
   criarUsuario
 };

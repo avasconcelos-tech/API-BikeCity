@@ -34,21 +34,19 @@
     <div id="modal-usuario" class="modal-overlay">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>Novo Usuário</h3>
-          <button id="fechar" class="btn-close">&times;</button>
+          <h3 id="titulo-modal-usuario">Novo Usuário</h3>
+          <button id="fechar" class="btn-close" type="button">&times;</button>
         </div>
         <form id="form" class="user-form">
           <label for="nome">Nome completo</label
           ><input id="nome" placeholder="Digite o nome completo" required /><label for="email"
             >E-mail corporativo</label
-          ><input
-            id="email"
-            type="email"
-            placeholder="Digite o e-mail corporativo"
-            required
-          /><label for="cargo">Cargo</label
-          ><select id="cargo" required>
-            <option value="">Selecione o cargo</option>
+          ><input id="email" type="email" placeholder="Digite o e-mail corporativo" required />
+          <label for="cargo">Cargo</label
+          ><input id="cargo" placeholder="Ex.: Estoquista" required /><label for="perfil"
+            >Perfil de acesso</label
+          ><select id="perfil" required>
+            <option value="">Selecione o perfil</option>
             <option value="OPERACIONAL">Operacional</option>
             <option value="ANALISTA">Analista</option>
             <option value="GERENTE">Gerente</option></select

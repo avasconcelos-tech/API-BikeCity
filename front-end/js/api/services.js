@@ -74,6 +74,15 @@ export function putUsuario(id, dados) {
 export function deleteUsuario(id) {
   return apiFetch(`/api/v1/usuarios/${id}`, { method: 'DELETE' });
 }
+export function reativarUsuario(id) {
+  return apiFetch(`/api/v1/usuarios/${id}/ativar`, { method: 'PATCH' });
+}
+export function trocarMinhaSenha(senhaAtual, novaSenha) {
+  return apiFetch('/api/v1/usuarios/me/senha', {
+    method: 'PATCH',
+    body: JSON.stringify({ senhaAtual, novaSenha }),
+  });
+}
 export function getRelatorio() {
   return apiFetch('/api/v1/estoque/relatorios');
 }

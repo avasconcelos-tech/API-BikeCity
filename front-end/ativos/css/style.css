@@ -160,6 +160,18 @@ button {
   gap: 12px;
   margin-bottom: 20px;
 }
+.account-link {
+  min-height: auto;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+}
+.account-link:hover {
+  color: var(--blue-700);
+  filter: none;
+  transform: none;
+}
 .content-header > div:last-child {
   display: flex;
   align-items: center;

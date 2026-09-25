@@ -66,6 +66,11 @@ function desativarUsuario(id) {
   return buscarUsuarioPorId(id);
 }
 
+function reativarUsuario(id) {
+  db.prepare('UPDATE usuarios SET ativo = 1 WHERE id = ?').run(Number(id));
+  return buscarUsuarioPorId(id);
+}
+
 function atualizarSenha(id, novaSenhaHash) {
   db.prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?').run(novaSenhaHash, Number(id));
   return buscarUsuarioPorId(id);
@@ -97,6 +102,7 @@ module.exports = {
   atualizarStatusLogin,
   atualizarUsuario,
   desativarUsuario,
+  reativarUsuario,
   atualizarSenha,
   criarUsuario
 };
