@@ -4,14 +4,14 @@ const os = require("os");
 
 const PORT = process.env.PORT || 5500;
 
-function resetState() {
+function resetarEstado() {
   if (process.env.NODE_ENV === 'test') conexaoBanco.resetarBancoParaTestes();
 }
 
 async function startServer() {
   try {
     // Valida se o banco SQLite foi instanciado e responde a uma consulta básica
-    const db = conexaoBanco.getDb();
+    const db = conexaoBanco.obterBanco();
     db.prepare("SELECT 1").get();
 
     console.log("Conexão com SQLite estabelecida com sucesso! ✔️");
@@ -49,4 +49,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { app, resetState };
+module.exports = { app, resetarEstado };

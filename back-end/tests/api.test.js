@@ -2,9 +2,35 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
-const { app, resetState } = require('../src/server');
+const { app, resetarEstado } = require('../src/server');
+const tratarErros = require('../src/middlewares/tratarErros');
 
-test.beforeEach(() => resetState());
+test.beforeEach(() => resetarEstado());
+
+test('JSON malformado retorna erro 400', async () => {
+  const res = await request(app)
+    .post('/api/v1/auth/login')
+    .set('Content-Type', 'application/json')
+    .send('{"email":');
+
+  assert.equal(res.status, 400);
+  assert.match(res.body.mensagem, /JSON malformado/i);
+});
+
+test('violação de unicidade retorna conflito 409', () => {
+  let status;
+  let corpo;
+  const resposta = {
+    headersSent: false,
+    status(codigo) { status = codigo; return this; },
+    json(dados) { corpo = dados; return this; }
+  };
+
+  tratarErros({ code: 'SQLITE_CONSTRAINT_UNIQUE', message: 'UNIQUE constraint failed: usuarios.email' }, {}, resposta, () => {});
+
+  assert.equal(status, 409);
+  assert.match(corpo.mensagem, /registro/i);
+});
 
 test('configuração usa o JWT_SECRET do ambiente', () => {
   const config = require('../src/configuracoes');

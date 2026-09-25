@@ -6,11 +6,12 @@ const assert = require('node:assert/strict');
 const conexaoBanco = require('../src/repositorios/conexaoBanco');
 const repositorioEstoque = require('../src/repositorios/repositorioEstoque');
 const servicoEstoque = require('../src/servicos/servicoEstoque');
+const ErroNegocio = require('../src/erros/ErroNegocio');
 
 test.beforeEach(() => conexaoBanco.resetarBancoParaTestes());
 
 test('ajuste manual desfaz saldo e histórico quando a movimentação falha', () => {
-  const db = conexaoBanco.getDb();
+  const db = conexaoBanco.obterBanco();
   const estoqueInicial = db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual;
   const adicionarMovimentacaoOriginal = repositorioEstoque.adicionarMovimentacao;
   repositorioEstoque.adicionarMovimentacao = () => {
@@ -32,7 +33,7 @@ test('ajuste manual desfaz saldo e histórico quando a movimentação falha', ()
 });
 
 test('devolução desfaz registro e saldo quando a movimentação falha', () => {
-  const db = conexaoBanco.getDb();
+  const db = conexaoBanco.obterBanco();
   const estoqueInicial = db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual;
   const adicionarMovimentacaoOriginal = repositorioEstoque.adicionarMovimentacao;
   repositorioEstoque.adicionarMovimentacao = () => {
@@ -78,7 +79,7 @@ test('histórico usa somente movimentações e preserva eventos com a mesma chav
     antigo_valor: 10, novo_valor: 11, justificativa: 'Correção', data
   });
 
-  const movimentacoes = repositorioEstoque.listarMovimentacoes(2);
+  const movimentacoes = repositorioEstoque.listarMovimentacoes(2).dados;
   assert.equal(movimentacoes.length, 2);
   assert.ok(movimentacoes.every((movimentacao) => Number.isInteger(movimentacao.id)));
   assert.deepEqual(
@@ -88,24 +89,22 @@ test('histórico usa somente movimentações e preserva eventos com a mesma chav
 });
 
 test('devolução valida origem e estado e subtrai devoluções para fornecedor', () => {
-  const db = conexaoBanco.getDb();
+  const db = conexaoBanco.obterBanco();
   const estoqueInicial = db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual;
-  const invalida = servicoEstoque.registrarDevolucao({
+  assert.throws(() => servicoEstoque.registrarDevolucao({
     produto_id: 2, quantidade: 1, origem: 'abc', motivo: 'Teste', estado_produto: 'INTACTO'
-  }, 1);
-  assert.equal(invalida.statusCode, 400);
+  }, 1), (erro) => erro instanceof ErroNegocio && erro.status === 400);
 
   const resultado = servicoEstoque.registrarDevolucao({
     produto_id: 2, quantidade: 1, origem: 'PARA_FORNECEDOR',
     motivo: 'Peça com defeito', estado_produto: 'DANIFICADO'
   }, 1);
-  assert.equal(resultado.statusCode, 201);
-  assert.equal(resultado.payload.dados.novo_estoque_total, estoqueInicial - 1);
+  assert.equal(resultado.novo_estoque_total, estoqueInicial - 1);
   assert.equal(db.prepare('SELECT estoque_atual FROM produtos WHERE id = 2').get().estoque_atual, estoqueInicial - 1);
 });
 
 test('devolução rastreável exige itens e atualiza status', () => {
-  const db = conexaoBanco.getDb();
+  const db = conexaoBanco.obterBanco();
   db.prepare("UPDATE produtos SET tipo_rastreabilidade = 'BATERIA', estoque_atual = 1 WHERE id = 2").run();
   const movimentacao = repositorioEstoque.adicionarMovimentacao({
     produto_id: 2, usuario_id: 1, tipo: 'ENTRADA', quantidade: 1,
@@ -115,22 +114,21 @@ test('devolução rastreável exige itens e atualiza status', () => {
     produto_id: 2, movimentacao_id: movimentacao.id, tipo: 'BATERIA',
     numero_serie: 'BAT-DEV-1', data_validade: '2027-01-01'
   });
-  const semItem = servicoEstoque.registrarDevolucao({
+  assert.throws(() => servicoEstoque.registrarDevolucao({
     produto_id: 2, quantidade: 1, origem: 'CLIENTE', motivo: 'Troca',
     estado_produto: 'INTACTO', numero_pedido_venda: 'PV-DEV'
-  }, 1);
-  assert.equal(semItem.statusCode, 400);
+  }, 1), (erro) => erro instanceof ErroNegocio && erro.status === 400);
   const resultado = servicoEstoque.registrarDevolucao({
     produto_id: 2, quantidade: 1, origem: 'CLIENTE', motivo: 'Troca',
     estado_produto: 'INTACTO', numero_pedido_venda: 'PV-DEV',
     rastreabilidade_ids: [rastreabilidade.id]
   }, 1);
-  assert.equal(resultado.statusCode, 201);
+  assert.equal(resultado.reaproveitada, true);
   assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(rastreabilidade.id).status, 'EM_ESTOQUE');
 });
 
 test('saída sem IDs usa FEFO para itens com validade', () => {
-  const db = conexaoBanco.getDb();
+  const db = conexaoBanco.obterBanco();
   db.prepare("UPDATE produtos SET tipo_rastreabilidade = 'BATERIA', estoque_atual = 2 WHERE id = 2").run();
   const antiga = repositorioEstoque.adicionarRastreabilidade({
     produto_id: 2, movimentacao_id: null, tipo: 'BATERIA', numero_serie: 'FEFO-ANTIGA',
@@ -144,7 +142,7 @@ test('saída sem IDs usa FEFO para itens com validade', () => {
   const resultado = servicoEstoque.registrarSaida(2, 1, 'Cliente', 'Venda', 1, {
     numero_pedido_venda: 'PV-FEFO'
   });
-  assert.equal(resultado.statusCode, 201);
+  assert.ok(resultado.movimentacao_id);
   assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(antiga.id).status, 'SAIDA');
   assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(nova.id).status, 'EM_ESTOQUE');
 });

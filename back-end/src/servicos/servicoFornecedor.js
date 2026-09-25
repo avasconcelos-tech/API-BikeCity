@@ -1,4 +1,5 @@
 const repositorio = require('../repositorios/repositorioFornecedor');
+const ErroNegocio = require('../erros/ErroNegocio');
 
 function normalizarCnpj(valor) {
   if (valor === undefined || valor === null || String(valor).trim() === '') return null;
@@ -26,8 +27,8 @@ function validarNome(nome) {
   return typeof nome === 'string' && nome.trim().length > 0;
 }
 
-function erroCnpj(statusCode, mensagem) {
-  return { statusCode, payload: { status: 'erro', mensagem } };
+function erroCnpj(status, mensagem) {
+  throw new ErroNegocio(status, mensagem);
 }
 
 function listarFornecedores(incluirInativos = false) {
@@ -35,16 +36,15 @@ function listarFornecedores(incluirInativos = false) {
 }
 
 function buscarFornecedorPorId(id) {
-  return repositorio.buscarFornecedorPorId(id);
+  const fornecedor = repositorio.buscarFornecedorPorId(id);
+  if (!fornecedor) throw new ErroNegocio(404, 'Fornecedor não encontrado');
+  return fornecedor;
 }
 
 function criarFornecedor(data) {
   const nome = data?.nome;
   if (!validarNome(nome)) {
-    return {
-      statusCode: 400,
-      payload: { status: 'erro', mensagem: 'Nome do fornecedor é obrigatório' }
-    };
+    throw new ErroNegocio(400, 'Nome do fornecedor é obrigatório');
   }
 
   const cnpj = normalizarCnpj(data?.cnpj);
@@ -59,23 +59,16 @@ function criarFornecedor(data) {
       contato: data?.contato ?? null
     });
   } catch (erro) {
-    if (String(erro.message).includes('UNIQUE')) return erroCnpj(409, 'CNPJ já cadastrado');
+    if (String(erro.message).includes('UNIQUE')) throw new ErroNegocio(409, 'CNPJ já cadastrado');
     throw erro;
   }
 
-  return {
-    statusCode: 201,
-    payload: {
-      status: 'sucesso',
-      mensagem: 'Fornecedor cadastrado com sucesso',
-      dados: fornecedor
-    }
-  };
+  return fornecedor;
 }
 
 function atualizarFornecedor(id, data) {
   const nome = data?.nome;
-  if (!validarNome(nome)) return { statusCode: 400, payload: { status: 'erro', mensagem: 'Nome do fornecedor é obrigatório' } };
+  if (!validarNome(nome)) throw new ErroNegocio(400, 'Nome do fornecedor é obrigatório');
   const cnpj = normalizarCnpj(data?.cnpj);
   if (cnpj === undefined) return erroCnpj(400, 'CNPJ inválido');
   if (cnpj && repositorio.existeCnpj(cnpj, id)) return erroCnpj(409, 'CNPJ já cadastrado');
@@ -84,28 +77,22 @@ function atualizarFornecedor(id, data) {
   try {
     fornecedor = repositorio.atualizarFornecedor(id, { nome: nome.trim(), cnpj, contato: data?.contato ?? null });
   } catch (erro) {
-    if (String(erro.message).includes('UNIQUE')) return erroCnpj(409, 'CNPJ já cadastrado');
+    if (String(erro.message).includes('UNIQUE')) throw new ErroNegocio(409, 'CNPJ já cadastrado');
     throw erro;
   }
-  if (!fornecedor) return { statusCode: 404, payload: { status: 'erro', mensagem: 'Fornecedor não encontrado' } };
-  return { statusCode: 200, payload: { status: 'sucesso', mensagem: 'Fornecedor atualizado com sucesso', dados: fornecedor } };
+  if (!fornecedor) throw new ErroNegocio(404, 'Fornecedor não encontrado');
+  return fornecedor;
 }
 
 function inativarFornecedor(id) {
   const resultado = repositorio.inativarFornecedor(id);
   if (!resultado.fornecedor && resultado.possuiProdutosAtivos) {
-    return {
-      statusCode: 409,
-      payload: { status: 'erro', mensagem: 'Não é possível inativar fornecedor vinculado a produto ativo.' }
-    };
+    throw new ErroNegocio(409, 'Não é possível inativar fornecedor vinculado a produto ativo.');
   }
   if (!resultado.fornecedor) {
-    return { statusCode: 404, payload: { status: 'erro', mensagem: 'Fornecedor não encontrado' } };
+    throw new ErroNegocio(404, 'Fornecedor não encontrado');
   }
-  return {
-    statusCode: 200,
-    payload: { status: 'sucesso', mensagem: 'Fornecedor inativado com sucesso', dados: resultado.fornecedor }
-  };
+  return resultado.fornecedor;
 }
 
 module.exports = {

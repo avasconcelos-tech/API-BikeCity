@@ -251,7 +251,7 @@ function executarEmTransacao(fn) {
 }
 
 const conexaoInstancia = {
-  getDb: () => db,
+  obterBanco: () => db,
   executarEmTransacao,
   resetarBancoParaTestes: () => {
     db.exec(`DELETE FROM movimentacoes; DELETE FROM rastreabilidade; DELETE FROM alertas; DELETE FROM auditoria; DELETE FROM devolucoes; DELETE FROM notificacoes; DELETE FROM produtos; DELETE FROM usuarios; DELETE FROM fornecedores;`);

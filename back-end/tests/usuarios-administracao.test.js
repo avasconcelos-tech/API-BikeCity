@@ -1,9 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
-const { app, resetState } = require('../src/server');
+const { app, resetarEstado } = require('../src/server');
 
-test.beforeEach(() => resetState());
+test.beforeEach(() => resetarEstado());
 
 async function obterToken(email = 'gerente@teste.com', senha = 'senha123') {
   const resposta = await request(app).post('/api/v1/auth/login').send({ email, senha });

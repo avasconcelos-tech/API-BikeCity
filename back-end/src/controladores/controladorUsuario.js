@@ -8,10 +8,6 @@ function listarUsuarios(req, res) {
 
 function buscarUsuarioPorId(req, res) {
   const usuario = servicoUsuario.buscarUsuarioPorId(req.params.id);
-  if (!usuario) {
-    return res.status(404).json({ status: 'erro', mensagem: 'Usuário não encontrado' });
-  }
-
   return res.status(200).json({ status: 'sucesso', dados: usuario });
 }
 
@@ -25,34 +21,34 @@ function atualizarUsuario(req, res) {
     }
   }
 
-  const resultado = servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
-  return res.status(resultado.statusCode).json(resultado.payload);
+  const usuario = servicoUsuario.atualizarUsuario(req.params.id, dadosParaAtualizar);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário atualizado com sucesso', dados: usuario });
 }
 
 function desativarUsuario(req, res) {
-  const resultado = servicoUsuario.desativarUsuario(req.params.id, req.user.id);
-  return res.status(resultado.statusCode).json(resultado.payload);
+  const usuario = servicoUsuario.desativarUsuario(req.params.id, req.user.id);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: usuario });
 }
 
 function reativarUsuario(req, res) {
-  const resultado = servicoUsuario.reativarUsuario(req.params.id);
-  return res.status(resultado.statusCode).json(resultado.payload);
+  const usuario = servicoUsuario.reativarUsuario(req.params.id);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: usuario });
 }
 
 function trocarSenha(req, res) {
   const usuarioId = req.user.id;
-  const resultado = servicoUsuario.trocarSenha(usuarioId, req.body?.senhaAtual, req.body?.novaSenha);
-  return res.status(resultado.statusCode).json(resultado.payload);
+  const dados = servicoUsuario.trocarSenha(usuarioId, req.body?.senhaAtual, req.body?.novaSenha);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Senha alterada com sucesso', dados });
 }
 
 function redefinirSenha(req, res) {
-  const resultado = servicoUsuario.redefinirSenha(req.params.id, req.body?.novaSenha, req.user.id);
-  return res.status(resultado.statusCode).json(resultado.payload);
+  const dados = servicoUsuario.redefinirSenha(req.params.id, req.body?.novaSenha, req.user.id);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Senha alterada com sucesso', dados });
 }
 
 function criarUsuario(req, res) {
-  const result = servicoUsuario.criarUsuario(req.body);
-  return res.status(result.statusCode).json(result.payload);
+  const dados = servicoUsuario.criarUsuario(req.body);
+  return res.status(201).json({ status: 'sucesso', mensagem: 'Usuário cadastrado com sucesso', dados });
 }
 
 module.exports = {

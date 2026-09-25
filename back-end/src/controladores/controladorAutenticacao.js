@@ -1,8 +1,8 @@
 const servicoAutenticacao = require('../servicos/servicoAutenticacao');
 
 function login(req, res) {
-  const result = servicoAutenticacao.loginUser(req.body.email, req.body.senha);
-  return res.status(result.statusCode).json(result.payload);
+  const dados = servicoAutenticacao.realizarLogin(req.body.email, req.body.senha);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Login realizado com sucesso', dados });
 }
 
 module.exports = {

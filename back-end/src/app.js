@@ -9,6 +9,8 @@ const rotasProduto = require('./rotas/rotasProduto');
 const rotasEstoque = require('./rotas/rotasEstoque');
 const rotasUpload = require('./rotas/rotasUpload');
 const rotasFornecedor = require('./rotas/rotasFornecedor');
+const servicoAutenticacao = require('./servicos/servicoAutenticacao');
+const tratarErros = require('./middlewares/tratarErros');
 
 const app = express();
 
@@ -35,13 +37,10 @@ app.use('/api/v1/usuarios', rotasUsuario);
 app.use('/api/v1/produtos', rotasProduto);
 app.use('/api/v1/fornecedores', rotasFornecedor);
 app.use('/api/v1/estoque', rotasEstoque);
-app.get('/api/v1/dashboard/resumo', require('./servicos/servicoAutenticacao').authenticate, require('./servicos/servicoAutenticacao').authorizePerfil('OPERACIONAL','ANALISTA','GERENTE'), require('./controladores/controladorEstoque').resumo);
+app.get('/api/v1/dashboard/resumo', servicoAutenticacao.validarAutenticacao, servicoAutenticacao.autorizarPerfil('OPERACIONAL','ANALISTA','GERENTE'), require('./controladores/controladorEstoque').resumo);
 app.use('/api/v1/uploads', rotasUpload);
 
 // Middleware Global de Tratamento de Erros (Sempre no final)
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ status: 'erro', mensagem: 'Erro interno do servidor' });
-});
+app.use(tratarErros);
 
 module.exports = app;

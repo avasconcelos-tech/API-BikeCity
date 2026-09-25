@@ -8,27 +8,22 @@ function listarFornecedores(req, res) {
 
 function buscarFornecedorPorId(req, res) {
   const fornecedor = servicoFornecedor.buscarFornecedorPorId(req.params.id);
-
-  if (!fornecedor) {
-    return res.status(404).json({ status: 'erro', mensagem: 'Fornecedor não encontrado' });
-  }
-
   return res.status(200).json({ status: 'sucesso', dados: fornecedor });
 }
 
 function criarFornecedor(req, res) {
-  const result = servicoFornecedor.criarFornecedor(req.body);
-  return res.status(result.statusCode).json(result.payload);
+  const fornecedor = servicoFornecedor.criarFornecedor(req.body);
+  return res.status(201).json({ status: 'sucesso', mensagem: 'Fornecedor cadastrado com sucesso', dados: fornecedor });
 }
 
 function atualizarFornecedor(req, res) {
-  const result = servicoFornecedor.atualizarFornecedor(req.params.id, req.body);
-  return res.status(result.statusCode).json(result.payload);
+  const fornecedor = servicoFornecedor.atualizarFornecedor(req.params.id, req.body);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Fornecedor atualizado com sucesso', dados: fornecedor });
 }
 
 function inativarFornecedor(req, res) {
-  const result = servicoFornecedor.inativarFornecedor(req.params.id);
-  return res.status(result.statusCode).json(result.payload);
+  const fornecedor = servicoFornecedor.inativarFornecedor(req.params.id);
+  return res.status(200).json({ status: 'sucesso', mensagem: 'Fornecedor inativado com sucesso', dados: fornecedor });
 }
 
 module.exports = {

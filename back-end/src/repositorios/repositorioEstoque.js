@@ -1,5 +1,5 @@
 const conexaoBanco = require('./conexaoBanco');
-const db = conexaoBanco.getDb();
+const db = conexaoBanco.obterBanco();
 
 function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
   const params = [];

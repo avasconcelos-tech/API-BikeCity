@@ -2,8 +2,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { SECRET } = require('../configuracoes');
 const repositorio = require('../repositorios/repositorioUsuario');
+const ErroNegocio = require('../erros/ErroNegocio');
 
-function authenticate(req, res, next) {
+function validarAutenticacao(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -32,7 +33,7 @@ function authenticate(req, res, next) {
   }
 }
 
-function authorizePerfil(...perfis) {
+function autorizarPerfil(...perfis) {
   return (req, res, next) => {
     if (!perfis.includes(req.user.perfil)) {
       return res.status(403).json({ status: 'erro', mensagem: 'Permissão insuficiente' });
@@ -41,26 +42,26 @@ function authorizePerfil(...perfis) {
   };
 }
 
-function createToken(usuario) {
+function criarToken(usuario) {
   return jwt.sign({ id: usuario.id, nome: usuario.nome, perfil: usuario.perfil, email: usuario.email }, SECRET, { expiresIn: '30m' });
 }
 
-function loginUser(email, senha) {
+function realizarLogin(email, senha) {
   if (typeof email !== 'string' || !email.trim() || typeof senha !== 'string') {
-    return { statusCode: 400, payload: { status: 'erro', mensagem: 'E-mail e senha são obrigatórios e devem ser textos.' } };
+    throw new ErroNegocio(400, 'E-mail e senha são obrigatórios e devem ser textos.');
   }
 
   email = email.trim().toLowerCase();
   const usuario = repositorio.buscarUsuarioPorEmail(email);
 
   if (!usuario) {
-    return { statusCode: 401, payload: { status: 'erro', mensagem: 'Credenciais inválidas' } };
+    throw new ErroNegocio(401, 'Credenciais inválidas');
   }
 
-  if (!usuario.ativo) { return { statusCode: 403, payload: { status: 'erro', mensagem: 'Conta inativa. Procure um administrador.' } }; }
+  if (!usuario.ativo) throw new ErroNegocio(403, 'Conta inativa. Procure um administrador.');
 
   if (usuario.bloqueado_until && new Date(usuario.bloqueado_until) > new Date()) {
-    return { statusCode: 403, payload: { status: 'erro', mensagem: 'Conta temporariamente bloqueada' } };
+    throw new ErroNegocio(403, 'Conta temporariamente bloqueada');
   }
 
   const senhaValida = bcrypt.compareSync(senha, usuario.senha_hash);
@@ -71,27 +72,20 @@ function loginUser(email, senha) {
     if (tentativasFalhas >= 3) {
       bloqueadoUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
       repositorio.atualizarStatusLogin(email, 0, bloqueadoUntil);
-      return { statusCode: 403, payload: { status: 'erro', mensagem: 'Conta temporariamente bloqueada' } };
+      throw new ErroNegocio(403, 'Conta temporariamente bloqueada');
     }
 
     repositorio.atualizarStatusLogin(email, tentativasFalhas, null);
-    return { statusCode: 401, payload: { status: 'erro', mensagem: 'Credenciais inválidas' } };
+    throw new ErroNegocio(401, 'Credenciais inválidas');
   }
 
   repositorio.atualizarStatusLogin(email, 0, null);
 
-  return {
-    statusCode: 200,
-    payload: {
-      status: 'sucesso',
-      mensagem: 'Login realizado com sucesso',
-      dados: { token: createToken(usuario) }
-    }
-  };
+  return { token: criarToken(usuario) };
 }
 
 module.exports = {
-  authenticate,
-  authorizePerfil,
-  loginUser
+  validarAutenticacao,
+  autorizarPerfil,
+  realizarLogin
 };

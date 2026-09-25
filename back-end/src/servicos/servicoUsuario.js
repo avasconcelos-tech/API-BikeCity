@@ -1,12 +1,9 @@
 const bcrypt = require('bcryptjs');
 const repositorio = require('../repositorios/repositorioUsuario');
+const ErroNegocio = require('../erros/ErroNegocio');
 
 const PERFIS_VALIDOS = ['OPERACIONAL', 'ANALISTA', 'GERENTE'];
 const CAMPOS_EDITAVEIS = ['nome', 'email', 'cargo', 'perfil'];
-
-function respostaErro(statusCode, mensagem) {
-  return { statusCode, payload: { status: 'erro', mensagem } };
-}
 
 function validarUsuario(dados, { parcial = false } = {}) {
   if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
@@ -64,104 +61,90 @@ function listarUsuarios(incluirInativos = false) {
 }
 
 function buscarUsuarioPorId(id) {
-  if (!Number.isInteger(Number(id)) || Number(id) < 1) return null;
-  return repositorio.buscarUsuarioPorId(id);
+  if (!Number.isInteger(Number(id)) || Number(id) < 1) throw new ErroNegocio(404, 'Usuário não encontrado');
+  const usuario = repositorio.buscarUsuarioPorId(id);
+  if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
+  return usuario;
 }
 
 function atualizarUsuario(id, dadosParaAtualizar) {
   const usuario = buscarUsuarioPorId(id);
-  if (!usuario) return respostaErro(404, 'Usuário não encontrado');
+  if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
 
   const validacao = validarUsuario(dadosParaAtualizar, { parcial: true });
-  if (validacao.erro) return respostaErro(400, validacao.erro);
+  if (validacao.erro) throw new ErroNegocio(400, validacao.erro);
 
   const dados = validacao.dados;
   if (dados.email) {
     const existe = repositorio.buscarUsuarioPorEmail(dados.email);
-    if (existe && existe.id !== usuario.id) return respostaErro(409, 'E-mail já cadastrado');
+    if (existe && existe.id !== usuario.id) throw new ErroNegocio(409, 'E-mail já cadastrado');
   }
 
   const resultado = repositorio.atualizarUsuario(id, dados);
   if (resultado.ultimoGerenteProtegido) {
-    return respostaErro(409, 'Não é possível remover ou desativar o último gerente ativo.');
+    throw new ErroNegocio(409, 'Não é possível remover ou desativar o último gerente ativo.');
   }
-
-  return {
-    statusCode: 200,
-    payload: { status: 'sucesso', mensagem: 'Usuário atualizado com sucesso', dados: resultado.usuario }
-  };
+  return resultado.usuario;
 }
 
 function desativarUsuario(id, solicitanteId) {
   const usuario = buscarUsuarioPorId(id);
-  if (!usuario) return respostaErro(404, 'Usuário não encontrado');
-  if (usuario.id === Number(solicitanteId)) return respostaErro(400, 'Não é permitido desativar a própria conta.');
+  if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
+  if (usuario.id === Number(solicitanteId)) throw new ErroNegocio(400, 'Não é permitido desativar a própria conta.');
 
   const resultado = repositorio.desativarUsuario(id);
   if (resultado.ultimoGerenteProtegido) {
-    return respostaErro(409, 'Não é possível desativar o último gerente ativo.');
+    throw new ErroNegocio(409, 'Não é possível desativar o último gerente ativo.');
   }
-  return {
-    statusCode: 200,
-    payload: { status: 'sucesso', mensagem: 'Usuário desativado com sucesso', dados: resultado.usuario }
-  };
+  return resultado.usuario;
 }
 
 function reativarUsuario(id) {
   const usuario = buscarUsuarioPorId(id);
-  if (!usuario) return respostaErro(404, 'Usuário não encontrado');
-  return {
-    statusCode: 200,
-    payload: { status: 'sucesso', mensagem: 'Usuário reativado com sucesso', dados: repositorio.reativarUsuario(id) }
-  };
+  if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
+  return repositorio.reativarUsuario(id);
 }
 
 function salvarNovaSenha(id, novaSenha) {
   if (!validarSenha(novaSenha)) {
-    return respostaErro(400, 'A nova senha deve ter pelo menos 6 caracteres.');
+    throw new ErroNegocio(400, 'A nova senha deve ter pelo menos 6 caracteres.');
   }
   const usuario = buscarUsuarioPorId(id);
-  if (!usuario) return respostaErro(404, 'Usuário não encontrado');
+  if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
 
   repositorio.atualizarSenha(id, bcrypt.hashSync(novaSenha, 10));
-  return {
-    statusCode: 200,
-    payload: { status: 'sucesso', mensagem: 'Senha alterada com sucesso', dados: { senha_alterada: true } }
-  };
+  return { senha_alterada: true };
 }
 
 function trocarSenha(id, senhaAtual, novaSenha) {
   if (typeof senhaAtual !== 'string') {
-    return respostaErro(400, 'As senhas são obrigatórias e devem ser textos.');
+    throw new ErroNegocio(400, 'As senhas são obrigatórias e devem ser textos.');
   }
 
   const usuario = buscarUsuarioPorId(id);
-  if (!usuario) return respostaErro(404, 'Usuário não encontrado');
-  if (!bcrypt.compareSync(senhaAtual, usuario.senha_hash)) return respostaErro(400, 'Senha atual incorreta');
+  if (!usuario) throw new ErroNegocio(404, 'Usuário não encontrado');
+  if (!bcrypt.compareSync(senhaAtual, usuario.senha_hash)) throw new ErroNegocio(400, 'Senha atual incorreta');
 
   return salvarNovaSenha(id, novaSenha);
 }
 
 function redefinirSenha(id, novaSenha, solicitanteId) {
   if (Number(id) === Number(solicitanteId)) {
-    return respostaErro(400, 'Use a rota de troca da própria senha.');
+    throw new ErroNegocio(400, 'Use a rota de troca da própria senha.');
   }
   return salvarNovaSenha(id, novaSenha);
 }
 
 function criarUsuario(data) {
   const validacao = validarUsuario(data);
-  if (validacao.erro) return respostaErro(400, validacao.erro);
-  if (!validarSenha(data.senha)) return respostaErro(400, 'A senha deve ter pelo menos 6 caracteres.');
+  if (validacao.erro) throw new ErroNegocio(400, validacao.erro);
+  if (!validarSenha(data.senha)) throw new ErroNegocio(400, 'A senha deve ter pelo menos 6 caracteres.');
 
   const existe = repositorio.buscarUsuarioPorEmail(validacao.dados.email);
-  if (existe) return respostaErro(409, 'E-mail já cadastrado');
+  if (existe) throw new ErroNegocio(409, 'E-mail já cadastrado');
 
   const usuario = repositorio.criarUsuario({ ...validacao.dados, senha: data.senha });
-  return {
-    statusCode: 201,
-    payload: { status: 'sucesso', mensagem: 'Usuário cadastrado com sucesso', dados: { id: usuario.id } }
-  };
+  return { id: usuario.id };
 }
 
 module.exports = {

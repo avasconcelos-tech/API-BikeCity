@@ -1,5 +1,98 @@
-const repositorioProduto=require('../repositorios/repositorioProduto');const repositorioFornecedor=require('../repositorios/repositorioFornecedor');
-function validarFornecedorExiste(id){if(id===undefined||id===null||id==='')return 'Fornecedor é obrigatório.';return repositorioFornecedor.buscarFornecedorPorId(id)?null:'Fornecedor informado não existe.';}
-function validarEstoqueMinimo(valor){if(valor===undefined)return 5;if((typeof valor!=='number'&&typeof valor!=='string')||String(valor).trim()==='')return null;const numero=Number(valor);return Number.isInteger(numero)&&numero>=0?numero:null;}
-function criarProduto(data){for(const [c,n] of [['nome','Nome'],['codigo_interno','Código interno'],['categoria','Categoria'],['unidade_medida','Unidade de medida'],['localizacao_deposito','Localização'],['custo','Custo']])if(data[c]===undefined||data[c]===null||String(data[c]).trim()==='')return {statusCode:400,payload:{status:'erro',mensagem:`${n} é obrigatório.`}};const estoqueMinimo=validarEstoqueMinimo(data.estoque_minimo);if(estoqueMinimo===null)return {statusCode:400,payload:{status:'erro',mensagem:'Estoque mínimo deve ser um número inteiro maior ou igual a 0.'}};const ef=validarFornecedorExiste(data.fornecedor_id);if(ef)return {statusCode:400,payload:{status:'erro',mensagem:ef}};if(Number(data.custo)<0)return {statusCode:400,payload:{status:'erro',mensagem:'Custo não pode ser negativo.'}};if(['VEICULO','BICICLETA','PATINETE'].includes(String(data.categoria).toUpperCase())&&!data.dimensoes&&data.categoria==='PECA_GRANDE')return {statusCode:400,payload:{status:'erro',mensagem:'Dimensões são obrigatórias para peças grandes.'}};try{const p=repositorioProduto.criarProduto({...data,estoque_minimo:estoqueMinimo});return {statusCode:201,payload:{status:'sucesso',mensagem:'Produto cadastrado com sucesso',dados:p}}}catch(e){if(String(e.message).includes('UNIQUE'))return {statusCode:409,payload:{status:'erro',mensagem:'Código interno já cadastrado.'}};throw e;}}
-module.exports={listarProdutos:(i)=>repositorioProduto.listarProdutos(i),buscarProdutoPorId:(id)=>repositorioProduto.buscarProdutoPorId(id),atualizarProduto:(id,d)=>{if(Object.hasOwn(d,'estoque_minimo')&&validarEstoqueMinimo(d.estoque_minimo)===null)throw new Error('Estoque mínimo deve ser um número inteiro maior ou igual a 0.');return repositorioProduto.atualizarProduto(id,d)},inativarProduto:(id)=>repositorioProduto.inativarProduto(id),reativarProduto:(id)=>repositorioProduto.reativarProduto(id),criarProduto,validarFornecedorExiste,validarEstoqueMinimo,vincularImagem:(id,c)=>repositorioProduto.atualizarProduto(id,{imagem_url:c})};
+const repositorioProduto = require('../repositorios/repositorioProduto');
+const repositorioFornecedor = require('../repositorios/repositorioFornecedor');
+const ErroNegocio = require('../erros/ErroNegocio');
+
+function validarFornecedorExiste(id) {
+	if (id === undefined || id === null || id === '') return 'Fornecedor é obrigatório.';
+	return repositorioFornecedor.buscarFornecedorPorId(id) ? null : 'Fornecedor informado não existe.';
+}
+
+function validarEstoqueMinimo(valor) {
+	if (valor === undefined) return 5;
+	if ((typeof valor !== 'number' && typeof valor !== 'string') || String(valor).trim() === '') return null;
+	const numero = Number(valor);
+	return Number.isInteger(numero) && numero >= 0 ? numero : null;
+}
+
+function buscarProdutoPorId(id) {
+	const produto = repositorioProduto.buscarProdutoPorId(id);
+	if (!produto) throw new ErroNegocio(404, 'Produto não encontrado');
+	return produto;
+}
+
+function criarProduto(data) {
+	for (const [campo, nome] of [
+		['nome', 'Nome'],
+		['codigo_interno', 'Código interno'],
+		['categoria', 'Categoria'],
+		['unidade_medida', 'Unidade de medida'],
+		['localizacao_deposito', 'Localização'],
+		['custo', 'Custo']
+	]) {
+		if (data[campo] === undefined || data[campo] === null || String(data[campo]).trim() === '') {
+			throw new ErroNegocio(400, `${nome} é obrigatório.`);
+		}
+	}
+
+	const estoqueMinimo = validarEstoqueMinimo(data.estoque_minimo);
+	if (estoqueMinimo === null) {
+		throw new ErroNegocio(400, 'Estoque mínimo deve ser um número inteiro maior ou igual a 0.');
+	}
+
+	const erroFornecedor = validarFornecedorExiste(data.fornecedor_id);
+	if (erroFornecedor) throw new ErroNegocio(400, erroFornecedor);
+	if (Number(data.custo) < 0) throw new ErroNegocio(400, 'Custo não pode ser negativo.');
+
+	if (['VEICULO', 'BICICLETA', 'PATINETE'].includes(String(data.categoria).toUpperCase()) && !data.dimensoes && data.categoria === 'PECA_GRANDE') {
+		throw new ErroNegocio(400, 'Dimensões são obrigatórias para peças grandes.');
+	}
+
+	try {
+		return repositorioProduto.criarProduto({ ...data, estoque_minimo: estoqueMinimo });
+	} catch (erro) {
+		if (String(erro.message).includes('UNIQUE')) throw new ErroNegocio(409, 'Código interno já cadastrado.');
+		throw erro;
+	}
+}
+
+function atualizarProduto(id, dados) {
+	buscarProdutoPorId(id);
+	if (Object.hasOwn(dados, 'estoque_minimo') && validarEstoqueMinimo(dados.estoque_minimo) === null) {
+		throw new ErroNegocio(400, 'Estoque mínimo deve ser um número inteiro maior ou igual a 0.');
+	}
+	if (Object.hasOwn(dados, 'fornecedor_id')) {
+		const erroFornecedor = validarFornecedorExiste(dados.fornecedor_id);
+		if (erroFornecedor) throw new ErroNegocio(400, erroFornecedor);
+	}
+	try {
+		return repositorioProduto.atualizarProduto(id, dados);
+	} catch (erro) {
+		if (String(erro.message).includes('UNIQUE')) throw new ErroNegocio(409, 'Código interno já cadastrado.');
+		throw erro;
+	}
+}
+
+function inativarProduto(id) {
+	const produto = buscarProdutoPorId(id);
+	if (Number(produto.estoque_atual) > 0) {
+		throw new ErroNegocio(400, 'Não é possível inativar produto com saldo em estoque.');
+	}
+	return repositorioProduto.inativarProduto(id);
+}
+
+function reativarProduto(id) {
+	buscarProdutoPorId(id);
+	return repositorioProduto.reativarProduto(id);
+}
+
+module.exports = {
+	listarProdutos: (incluirInativos) => repositorioProduto.listarProdutos(incluirInativos),
+	buscarProdutoPorId,
+	atualizarProduto,
+	inativarProduto,
+	reativarProduto,
+	criarProduto,
+	validarFornecedorExiste,
+	validarEstoqueMinimo,
+	vincularImagem: (id, caminho) => repositorioProduto.atualizarProduto(id, { imagem_url: caminho })
+};

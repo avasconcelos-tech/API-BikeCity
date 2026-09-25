@@ -1,11 +1,11 @@
 const express = require('express');
 const fs = require('fs');
 const upload = require('../configuracoes/multer');
-const { authenticate, authorizePerfil } = require('../servicos/servicoAutenticacao');
+const { validarAutenticacao, autorizarPerfil } = require('../servicos/servicoAutenticacao');
 
 const router = express.Router();
 
-router.post('/imagens', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), (req, res) => {
+router.post('/imagens', validarAutenticacao, autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), (req, res) => {
   upload.single('imagem')(req, res, async (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {

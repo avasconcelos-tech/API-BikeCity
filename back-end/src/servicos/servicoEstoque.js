@@ -2,11 +2,12 @@ const repositorioProduto = require('../repositorios/repositorioProduto');
 const repositorioEstoque = require('../repositorios/repositorioEstoque');
 const repositorioFornecedor = require('../repositorios/repositorioFornecedor');
 const conexaoBanco = require('../repositorios/conexaoBanco');
-const db = conexaoBanco.getDb();
+const ErroNegocio = require('../erros/ErroNegocio');
+const db = conexaoBanco.obterBanco();
 const executarEmTransacao = conexaoBanco.executarEmTransacao;
 
-function erro(codigo, mensagem) { return { statusCode: codigo, payload: { status: 'erro', mensagem } }; }
-function sucesso(codigo, mensagem, dados) { return { statusCode: codigo, payload: { status: 'sucesso', mensagem, dados } }; }
+function erro(codigo, mensagem) { throw new ErroNegocio(codigo, mensagem); }
+function sucesso(codigo, mensagem, dados) { return dados; }
 function obrigatorio(v, campo) { return v === undefined || v === null || String(v).trim() === '' ? `${campo} é obrigatório.` : null; }
 function quantidadePositiva(v,c='quantidade'){const n=Number(v);return Number.isInteger(n)&&n>0?null:`${c} deve ser um número inteiro maior que zero.`;}
 function estoqueBaixo(produto, quantidade){return Number(quantidade)<=Number(produto.estoque_minimo);}
@@ -195,9 +196,9 @@ function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
     estoque_atual: novoEstoque
   });
 }
-function registrarAjusteManualComAuditoria(produtoId,novaQuantidade,justificativa,usuarioId){const produto=repositorioProduto.buscarProdutoPorId(produtoId);const antigo=produto?.estoque_atual;const resultado=registrarAjusteManual(produtoId,novaQuantidade,justificativa,usuarioId);if(resultado.statusCode===201&&!resultado.payload.dados.log_auditoria_registrado){repositorioEstoque.adicionarAuditoria({produto_id:Number(produtoId),usuario_id:usuarioId,acao:'AJUSTE_MANUAL',antigo_valor:antigo,novo_valor:Number(novaQuantidade),justificativa,data:new Date().toISOString()});resultado.payload.dados.log_auditoria_registrado=true;}if(resultado.statusCode===201){const produtoAtualizado=repositorioProduto.buscarProdutoPorId(produtoId);if(produtoAtualizado)verificarEstoqueMinimo(produtoAtualizado);}return resultado;}
+function registrarAjusteManualComAuditoria(produtoId,novaQuantidade,justificativa,usuarioId){const produto=repositorioProduto.buscarProdutoPorId(produtoId);const antigo=produto?.estoque_atual;const resultado=registrarAjusteManual(produtoId,novaQuantidade,justificativa,usuarioId);if(!Object.hasOwn(resultado,'log_auditoria_registrado')){repositorioEstoque.adicionarAuditoria({produto_id:Number(produtoId),usuario_id:usuarioId,acao:'AJUSTE_MANUAL',antigo_valor:antigo,novo_valor:Number(novaQuantidade),justificativa,data:new Date().toISOString()});resultado.log_auditoria_registrado=true;}const produtoAtualizado=repositorioProduto.buscarProdutoPorId(produtoId);if(produtoAtualizado)verificarEstoqueMinimo(produtoAtualizado);return resultado;}
 const registrarDevolucaoOriginal=registrarDevolucao;
-function registrarDevolucaoComVerificacao(dados,usuarioId){const resultado=registrarDevolucaoOriginal(dados,usuarioId);if(resultado.statusCode===201){const produto=repositorioProduto.buscarProdutoPorId(dados.produto_id);if(produto)verificarEstoqueMinimo(produto);}return resultado;}
+function registrarDevolucaoComVerificacao(dados,usuarioId){const resultado=registrarDevolucaoOriginal(dados,usuarioId);const produto=repositorioProduto.buscarProdutoPorId(dados.produto_id);if(produto)verificarEstoqueMinimo(produto);return resultado;}
 function obterResumo(){return repositorioEstoque.resumo();}
 function obterRelatorio(filtros={}){return repositorioEstoque.relatorio(filtros);} 
 function buscarPorCodigo(codigo){return db.prepare(`SELECT * FROM produtos WHERE ativo=1 AND codigo_interno=?`).get(codigo)||null;}

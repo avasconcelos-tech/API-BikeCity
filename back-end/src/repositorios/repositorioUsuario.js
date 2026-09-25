@@ -1,7 +1,7 @@
 const conexaoBanco = require('./conexaoBanco');
 const bcrypt = require('bcryptjs');
 
-const db = conexaoBanco.getDb();
+const db = conexaoBanco.obterBanco();
 
 function listarUsuarios(incluirInativos = false) {
   const query = incluirInativos ? 'SELECT * FROM usuarios ORDER BY id' : 'SELECT * FROM usuarios WHERE ativo = 1 ORDER BY id';

@@ -1,6 +1,6 @@
 const conexaoBanco = require('./conexaoBanco');
 
-const db = conexaoBanco.getDb();
+const db = conexaoBanco.obterBanco();
 
 function listarFornecedores(incluirInativos = false) {
   const query = incluirInativos ? 'SELECT * FROM fornecedores ORDER BY id' : 'SELECT * FROM fornecedores WHERE ativo = 1 ORDER BY id';

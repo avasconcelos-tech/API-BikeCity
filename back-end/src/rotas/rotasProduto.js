@@ -1,21 +1,21 @@
 const express = require('express');
 const fs = require('fs');
 const controladorProduto = require('../controladores/controladorProduto');
-const { authenticate, authorizePerfil } = require('../servicos/servicoAutenticacao');
+const { validarAutenticacao, autorizarPerfil } = require('../servicos/servicoAutenticacao');
 const upload = require('../configuracoes/multer');
 const repositorioProduto = require('../repositorios/repositorioProduto');
 
 const router = express.Router();
 
-router.get('/', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.listarProdutos);
-router.patch('/:id/reativar', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
-router.get('/:id', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.buscarProdutoPorId);
-router.post('/', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.criarProduto);
-router.put('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.atualizarProduto);
-router.delete('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.inativarProduto);
-router.patch('/:id/ativar', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
+router.get('/', validarAutenticacao, autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.listarProdutos);
+router.patch('/:id/reativar', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
+router.get('/:id', validarAutenticacao, autorizarPerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorProduto.buscarProdutoPorId);
+router.post('/', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.criarProduto);
+router.put('/:id', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.atualizarProduto);
+router.delete('/:id', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.inativarProduto);
+router.patch('/:id/ativar', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
 
-router.post('/:id/imagem', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), (req, res) => {
+router.post('/:id/imagem', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), (req, res) => {
   const produtoId = Number(req.params.id);
   const produto = repositorioProduto.buscarProdutoPorId(produtoId);
 

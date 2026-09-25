@@ -1,5 +1,5 @@
 const conexaoBanco = require('../src/repositorios/conexaoBanco');
-const db = conexaoBanco.getDb();
+const db = conexaoBanco.obterBanco();
 
 const resultado = db.prepare(`
   UPDATE produtos

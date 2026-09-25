@@ -4,6 +4,7 @@ const conexaoBanco = require('../src/repositorios/conexaoBanco');
 const servicoProduto = require('../src/servicos/servicoProduto');
 const servicoEstoque = require('../src/servicos/servicoEstoque');
 const repositorioEstoque = require('../src/repositorios/repositorioEstoque');
+const ErroNegocio = require('../src/erros/ErroNegocio');
 
 test.beforeEach(() => conexaoBanco.resetarBancoParaTestes());
 
@@ -23,23 +24,19 @@ test('produto bateria cadastrado exige rastreabilidade na entrada', () => {
     demanda_prevista: 3
   });
 
-  assert.equal(produto.statusCode, 201);
-  assert.equal(produto.payload.dados.dimensoes, '10x10');
-  assert.equal(produto.payload.dados.estoque_minimo, 7);
-  assert.equal(produto.payload.dados.tipo_rastreabilidade, 'BATERIA');
+  assert.equal(produto.dimensoes, '10x10');
+  assert.equal(produto.estoque_minimo, 7);
+  assert.equal(produto.tipo_rastreabilidade, 'BATERIA');
 
-  const entrada = servicoEstoque.registrarEntrada(
-    produto.payload.dados.id,
+  assert.throws(() => servicoEstoque.registrarEntrada(
+    produto.id,
     1,
     1,
     1,
     'NF-BAT-REG',
     [],
     { numero_pedido_compra: 'PC-BAT-REG' }
-  );
-
-  assert.equal(entrada.statusCode, 400);
-  assert.match(entrada.payload.mensagem, /numero_serie|data_validade/i);
+  ), (erro) => erro instanceof ErroNegocio && erro.status === 400 && /numero_serie|data_validade/i.test(erro.message));
 });
 
 test('entrada exige uma identificação por unidade e rejeita duplicatas', () => {
@@ -52,27 +49,25 @@ test('entrada exige uma identificação por unidade e rejeita duplicatas', () =>
     fornecedor_id: 1,
     custo: 100,
     tipo_rastreabilidade: 'BATERIA'
-  }).payload.dados;
+  });
 
-  const incompleta = servicoEstoque.registrarEntrada(produto.id, 2, 1, 1, 'NF-BAT-2', [], {
+  assert.throws(() => servicoEstoque.registrarEntrada(produto.id, 2, 1, 1, 'NF-BAT-2', [], {
     numero_pedido_compra: 'PC-BAT-2',
     numero_serie: 'SERIE-UNICA',
     data_validade: '2027-01-01'
-  });
-  assert.equal(incompleta.statusCode, 400);
+  }), (erro) => erro instanceof ErroNegocio && erro.status === 400);
 
   const entrada = servicoEstoque.registrarEntrada(produto.id, 2, 1, 1, 'NF-BAT-3', [
     { numero_serie: 'SERIE-A', data_validade: '2027-01-01' },
     { numero_serie: 'SERIE-B', data_validade: '2027-02-01' }
   ], { numero_pedido_compra: 'PC-BAT-3' });
-  assert.equal(entrada.statusCode, 201);
+  assert.equal(entrada.quantidade_adicionada, 2);
   assert.deepEqual(
     repositorioEstoque.listarRastreabilidade(produto.id).map((item) => item.numero_serie).sort(),
     ['SERIE-A', 'SERIE-B']
   );
 
-  const duplicada = servicoEstoque.registrarEntrada(produto.id, 1, 1, 1, 'NF-BAT-4', [
+  assert.throws(() => servicoEstoque.registrarEntrada(produto.id, 1, 1, 1, 'NF-BAT-4', [
     { numero_serie: 'SERIE-A', data_validade: '2027-03-01' }
-  ], { numero_pedido_compra: 'PC-BAT-4' });
-  assert.equal(duplicada.statusCode, 409);
+  ], { numero_pedido_compra: 'PC-BAT-4' }), (erro) => erro instanceof ErroNegocio && erro.status === 409);
 });
