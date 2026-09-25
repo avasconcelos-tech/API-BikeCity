@@ -8,5 +8,6 @@ router.get('/', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENT
 router.get('/:id', authenticate, authorizePerfil('OPERACIONAL', 'ANALISTA', 'GERENTE'), controladorFornecedor.buscarFornecedorPorId);
 router.post('/', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorFornecedor.criarFornecedor);
 router.put('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorFornecedor.atualizarFornecedor);
+router.delete('/:id', authenticate, authorizePerfil('ANALISTA', 'GERENTE'), controladorFornecedor.inativarFornecedor);
 
 module.exports = router;

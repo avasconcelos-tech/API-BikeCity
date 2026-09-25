@@ -26,9 +26,15 @@ function atualizarFornecedor(req, res) {
   return res.status(result.statusCode).json(result.payload);
 }
 
+function inativarFornecedor(req, res) {
+  const result = servicoFornecedor.inativarFornecedor(req.params.id);
+  return res.status(result.statusCode).json(result.payload);
+}
+
 module.exports = {
   listarFornecedores,
   buscarFornecedorPorId,
   criarFornecedor,
-  atualizarFornecedor
+  atualizarFornecedor,
+  inativarFornecedor
 };

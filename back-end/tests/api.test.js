@@ -384,7 +384,7 @@ test('fornecedor é criado e consultado com validação de produto', async () =>
   const cadastroFornecedor = await request(app)
     .post('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'ACME Ltda', cnpj: '12.345.678/0001-90', contato: 'Maria' });
+    .send({ nome: 'ACME Ltda', cnpj: '11.222.333/0001-81', contato: 'Maria' });
 
   assert.equal(cadastroFornecedor.status, 201);
   assert.ok(cadastroFornecedor.body.dados.id);
@@ -406,7 +406,7 @@ test('fornecedor é criado e consultado com validação de produto', async () =>
   const atualizacaoFornecedor = await request(app)
     .put(`/api/v1/fornecedores/${cadastroFornecedor.body.dados.id}`)
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'ACME Mobility', cnpj: '12.345.678/0001-90', contato: 'João' });
+    .send({ nome: 'ACME Mobility', cnpj: '11.222.333/0001-81', contato: 'João' });
 
   assert.equal(atualizacaoFornecedor.status, 200);
   assert.equal(atualizacaoFornecedor.body.dados.nome, 'ACME Mobility');
@@ -429,6 +429,64 @@ test('fornecedor é criado e consultado com validação de produto', async () =>
 
   assert.equal(produtoInvalido.status, 400);
   assert.match(produtoInvalido.body.mensagem, /fornecedor/i);
+});
+
+test('CNPJ valida formato e dígitos, impede duplicidade e protege inativação de fornecedor com produto ativo', async () => {
+  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+
+  const cnpjInvalido = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'CNPJ Inválido', cnpj: '11.222.333/0001-80' });
+  assert.equal(cnpjInvalido.status, 400);
+  assert.match(cnpjInvalido.body.mensagem, /CNPJ inválido/i);
+
+  const fornecedorA = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Fornecedor A', cnpj: '11.222.333/0001-81' });
+  const fornecedorB = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Fornecedor B', cnpj: '04.252.011/0001-10' });
+  const fornecedorAlfanumerico = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Fornecedor Alfanumérico', cnpj: '12.ABC.345/01DE-35' });
+  assert.equal(fornecedorA.status, 201);
+  assert.equal(fornecedorA.body.dados.cnpj, '11222333000181');
+  assert.equal(fornecedorB.status, 201);
+  assert.equal(fornecedorAlfanumerico.status, 201);
+  assert.equal(fornecedorAlfanumerico.body.dados.cnpj, '12ABC34501DE35');
+
+  const cnpjDuplicado = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Duplicado', cnpj: '11222333000181' });
+  assert.equal(cnpjDuplicado.status, 409);
+
+  const atualizacaoDuplicada = await request(app)
+    .put(`/api/v1/fornecedores/${fornecedorB.body.dados.id}`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Fornecedor B', cnpj: '11.222.333/0001-81' });
+  assert.equal(atualizacaoDuplicada.status, 409);
+
+  const fornecedorComProduto = await request(app)
+    .delete('/api/v1/fornecedores/1')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(fornecedorComProduto.status, 409);
+
+  const inativacao = await request(app)
+    .delete(`/api/v1/fornecedores/${fornecedorB.body.dados.id}`)
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(inativacao.status, 200);
+  assert.equal(inativacao.body.dados.ativo, false);
+
+  const lista = await request(app)
+    .get('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(lista.body.dados.some((item) => item.id === fornecedorB.body.dados.id), false);
 });
 
 test('upload de imagem vincula ao produto correto', async () => {

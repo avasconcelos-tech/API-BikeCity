@@ -56,7 +56,7 @@ Armazena as informações dos fornecedores de produtos.
 | --------- | ------------ | ---- | ----- | -------------- | ---------------------------- |
 | `id`      | INT          | NÃO  | PK    | Auto-increment | Identificador único          |
 | `nome`    | VARCHAR(150) | NÃO  |       |                | Razão Social / Nome Fantasia |
-| `cnpj`    | VARCHAR(18)  | SIM  |       | Unique         | CNPJ formatado               |
+| `cnpj`    | VARCHAR(14)  | SIM  | Unique|                | CNPJ validado, armazenado em formato canônico |
 | `contato` | VARCHAR(100) | SIM  |       |                | Telefone / E-mail de contato |
 | `ativo`   | TINYINT(1)   | NÃO  |       | 1              | Status do fornecedor         |
 
@@ -536,7 +536,7 @@ GET /api/v1/fornecedores?incluirInativos=true
     {
       "id": 1,
       "nome": "Caloi Distribuidora S/A",
-      "cnpj": "12.345.678/0001-90",
+      "cnpj": "11222333000181",
       "contato": "vendas@caloi.com",
       "ativo": true
     }
@@ -558,7 +558,7 @@ GET /api/v1/fornecedores?incluirInativos=true
   "dados": {
     "id": 1,
     "nome": "Caloi Distribuidora S/A",
-    "cnpj": "12.345.678/0001-90",
+    "cnpj": "11222333000181",
     "contato": "vendas@caloi.com",
     "ativo": true
   }
@@ -585,7 +585,7 @@ GET /api/v1/fornecedores?incluirInativos=true
 ```json
 {
   "nome": "Shimano Brasil",
-  "cnpj": "98.765.432/0001-10",
+  "cnpj": "11.222.333/0001-81",
   "contato": "(11) 99999-8888"
 }
 ```
@@ -599,7 +599,7 @@ GET /api/v1/fornecedores?incluirInativos=true
   "dados": {
     "id": 2,
     "nome": "Shimano Brasil",
-    "cnpj": "98.765.432/0001-10",
+    "cnpj": "11222333000181",
     "contato": "(11) 99999-8888",
     "ativo": true
   }
@@ -614,6 +614,26 @@ GET /api/v1/fornecedores?incluirInativos=true
   "mensagem": "Nome do fornecedor é obrigatório"
 }
 ```
+
+O CNPJ é opcional. Quando informado, deve ter 14 caracteres alfanuméricos (os dois dígitos verificadores finais devem ser numéricos), com ou sem a máscara `XX.XXX.XXX/XXXX-XX`, e passar na validação dos dígitos verificadores. CNPJs são armazenados em formato canônico, sem máscara e em maiúsculas. CNPJ inválido retorna `400 Bad Request`; CNPJ já cadastrado retorna `409 Conflict`.
+
+## 1.4. Atualizar Fornecedor
+
+* **Rota:** `PUT /api/v1/fornecedores/:id`
+* **Acesso:** Autenticado
+* **Permissões:** `ANALISTA`, `GERENTE`
+* **Body:** `nome` obrigatório; `cnpj` e `contato` opcionais.
+
+Atualizar um fornecedor inexistente retorna `404 Not Found`. As mesmas regras de validação e unicidade do CNPJ do cadastro se aplicam.
+
+## 1.5. Inativar Fornecedor
+
+* **Rota:** `DELETE /api/v1/fornecedores/:id`
+* **Acesso:** Autenticado
+* **Permissões:** `ANALISTA`, `GERENTE`
+* **Comportamento:** Inativação lógica; fornecedores inativos deixam de aparecer na listagem padrão e continuam consultáveis com `incluirInativos=true`.
+
+Não é possível inativar um fornecedor vinculado a produto ativo. Nesse caso, a API retorna `409 Conflict`. Fornecedor inexistente retorna `404 Not Found`.
 
 ---
 

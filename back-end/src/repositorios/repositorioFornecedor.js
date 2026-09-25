@@ -39,9 +39,35 @@ function atualizarFornecedor(id, dados) {
   return buscarFornecedorPorId(id);
 }
 
+function existeCnpj(cnpj, excetoId = null) {
+  const query = excetoId === null
+    ? 'SELECT 1 FROM fornecedores WHERE cnpj = ?'
+    : 'SELECT 1 FROM fornecedores WHERE cnpj = ? AND id <> ?';
+  const parametros = excetoId === null ? [cnpj] : [cnpj, Number(excetoId)];
+  return Boolean(db.prepare(query).get(...parametros));
+}
+
+function inativarFornecedor(id) {
+  return conexaoBanco.executarEmTransacao(() => {
+    const fornecedorId = Number(id);
+    const fornecedor = buscarFornecedorPorId(fornecedorId);
+    if (!fornecedor) return { fornecedor: null, possuiProdutosAtivos: false };
+
+    const produtoAtivo = db.prepare(
+      'SELECT 1 FROM produtos WHERE fornecedor_id = ? AND ativo = 1 LIMIT 1'
+    ).get(fornecedorId);
+    if (produtoAtivo) return { fornecedor: null, possuiProdutosAtivos: true };
+
+    db.prepare('UPDATE fornecedores SET ativo = 0 WHERE id = ?').run(fornecedorId);
+    return { fornecedor: buscarFornecedorPorId(fornecedorId), possuiProdutosAtivos: false };
+  });
+}
+
 module.exports = {
   listarFornecedores,
   buscarFornecedorPorId,
   criarFornecedor,
-  atualizarFornecedor
+  atualizarFornecedor,
+  existeCnpj,
+  inativarFornecedor
 };

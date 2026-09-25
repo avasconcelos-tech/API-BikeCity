@@ -16,6 +16,24 @@ function adicionarColunaSeFaltar(tabela, coluna, definicao) {
   }
 }
 
+function migrarCnpjsFornecedores() {
+  const fornecedores = db.prepare(
+    'SELECT id, cnpj FROM fornecedores WHERE cnpj IS NOT NULL ORDER BY id'
+  ).all();
+  const cnpjsEncontrados = new Set();
+  const atualizarCnpj = db.prepare('UPDATE fornecedores SET cnpj = ? WHERE id = ?');
+
+  for (const fornecedor of fornecedores) {
+    const cnpj = String(fornecedor.cnpj).replace(/[./-]/g, '').toUpperCase();
+    if (!cnpj || cnpjsEncontrados.has(cnpj)) {
+      atualizarCnpj.run(null, fornecedor.id);
+      continue;
+    }
+    cnpjsEncontrados.add(cnpj);
+    if (cnpj !== fornecedor.cnpj) atualizarCnpj.run(cnpj, fornecedor.id);
+  }
+}
+
 function corrigirProdutosComColunasTrocadas() {
   const resultado = db.prepare(`
     UPDATE produtos
@@ -174,6 +192,10 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('auditoria', 'novo_valor', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'justificativa', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'data', 'TEXT');
+  migrarCnpjsFornecedores();
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_fornecedores_cnpj
+    ON fornecedores(cnpj)
+    WHERE cnpj IS NOT NULL`);
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rastreabilidade_numero_serie
     ON rastreabilidade(numero_serie)
     WHERE numero_serie IS NOT NULL AND TRIM(numero_serie) <> ''`);
