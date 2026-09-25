@@ -81,14 +81,44 @@ function listarRastreabilidade(produtoId=null) {
   if (produtoId) return db.prepare(`SELECT r.*,p.nome AS produto_nome FROM rastreabilidade r JOIN produtos p ON p.id=r.produto_id WHERE r.produto_id=? ORDER BY r.id DESC`).all(Number(produtoId));
   return db.prepare(`SELECT r.*,p.nome AS produto_nome FROM rastreabilidade r JOIN produtos p ON p.id=r.produto_id ORDER BY r.id DESC`).all();
 }
-function adicionarAlerta(a){ const r=db.prepare('INSERT INTO alertas(produto_id,mensagem,lido,criado_em) VALUES(?,?,0,?)').run(a.produto_id,a.mensagem,new Date().toISOString()); return {id:Number(r.lastInsertRowid),...a,lido:false}; }
+function buscarAlertaAberto(produtoId) {
+  return db.prepare(
+    'SELECT * FROM alertas WHERE produto_id = ? AND lido = 0 ORDER BY id DESC LIMIT 1'
+  ).get(Number(produtoId)) || null;
+}
+function adicionarAlerta(a) {
+  const existente = buscarAlertaAberto(a.produto_id);
+  if (existente) return { ...existente, lido: false, criado: false };
+
+  const criadoEm = new Date().toISOString();
+  const resultado = conexaoBanco.executarEmTransacao(() => {
+    const inserido = db.prepare(
+      'INSERT INTO alertas(produto_id,mensagem,lido,criado_em) VALUES(?,?,0,?)'
+    ).run(a.produto_id, a.mensagem, criadoEm);
+    for (const setor of ['COMPRAS', 'LOGISTICA']) {
+      db.prepare(
+        'INSERT INTO notificacoes(setor,titulo,mensagem,produto_id,lida,criada_em) VALUES(?,?,?,?,0,?)'
+      ).run(setor, 'Estoque baixo', a.mensagem, a.produto_id, criadoEm);
+    }
+    return Number(inserido.lastInsertRowid);
+  });
+  return { id: resultado, ...a, lido: false, criado: true };
+}
 function listarAlertas(){return db.prepare(`SELECT a.*,p.nome AS produto_nome FROM alertas a LEFT JOIN produtos p ON p.id=a.produto_id ORDER BY a.id DESC`).all().map(a=>({...a,lido:Boolean(a.lido)}));}
 function marcarAlertaLido(id){db.prepare('UPDATE alertas SET lido=1 WHERE id=?').run(Number(id)); return true;}
+function fecharAlertasAbertos(produtoId) {
+  return db.prepare('UPDATE alertas SET lido = 1 WHERE produto_id = ? AND lido = 0')
+    .run(Number(produtoId)).changes;
+}
 function adicionarAuditoria(r){const x=db.prepare(`INSERT INTO auditoria(produto_id,usuario_id,acao,antigo_valor,novo_valor,justificativa,data) VALUES(?,?,?,?,?,?,?)`).run(r.produto_id??null,r.usuario_id,r.acao??'AJUSTE_MANUAL',String(r.antigo_valor??''),String(r.novo_valor??''),r.justificativa??null,r.data); return {id:Number(x.lastInsertRowid),...r};}
 function adicionarDevolucao(d){const r=db.prepare(`INSERT INTO devolucoes(produto_id,usuario_id,origem,motivo,estado_produto,numero_pedido_venda,reaproveitavel,quantidade,data_devolucao,status,observacao) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).run(d.produto_id,d.usuario_id,d.origem,d.motivo,d.estado_produto,d.numero_pedido_venda??null,d.reaproveitavel?1:0,d.quantidade,d.data_devolucao,d.status??'APROVADA',d.observacao??null);return {id:Number(r.lastInsertRowid),...d};}
 function listarDevolucoes(){return db.prepare(`SELECT d.*,p.nome AS produto_nome,u.nome AS usuario_nome FROM devolucoes d LEFT JOIN produtos p ON p.id=d.produto_id LEFT JOIN usuarios u ON u.id=d.usuario_id ORDER BY d.id DESC`).all().map(d=>({...d,reaproveitavel:Boolean(d.reaproveitavel)}));}
 function adicionarNotificacao(n){const r=db.prepare('INSERT INTO notificacoes(setor,titulo,mensagem,produto_id,lida,criada_em) VALUES(?,?,?,?,0,?)').run(n.setor,n.titulo,n.mensagem,n.produto_id??null,new Date().toISOString());return {id:Number(r.lastInsertRowid),...n,lida:false};}
-function listarNotificacoes(setor=null){if(setor)return db.prepare('SELECT * FROM notificacoes WHERE setor=? ORDER BY id DESC').all(setor);return db.prepare('SELECT * FROM notificacoes ORDER BY id DESC').all();}
+function listarNotificacoes(setor=null){const query=setor?'SELECT * FROM notificacoes WHERE setor=? ORDER BY id DESC':'SELECT * FROM notificacoes ORDER BY id DESC';const notificacoes=setor?db.prepare(query).all(setor):db.prepare(query).all();return notificacoes.map(n=>({...n,lida:Boolean(n.lida)}));}
+function marcarNotificacaoLida(id) {
+  const resultado = db.prepare('UPDATE notificacoes SET lida = 1 WHERE id = ?').run(Number(id));
+  return resultado.changes > 0;
+}
 function resumo(){return db.prepare(`SELECT COUNT(*) total_produtos, COALESCE(SUM(estoque_atual*custo),0) valor_total_estoque, SUM(CASE WHEN estoque_atual<=estoque_minimo THEN 1 ELSE 0 END) estoque_critico FROM produtos WHERE ativo=1`).get();}
 function relatorio(filtros = {}) {
   const movimentacoes = listarMovimentacoes(filtros, filtros.page || 1, filtros.limit || 20);
@@ -103,4 +133,4 @@ function relatorio(filtros = {}) {
     meta: movimentacoes.meta
   };
 }
-module.exports={listarMovimentacoes,adicionarMovimentacao,adicionarRastreabilidade,listarRastreabilidade,adicionarAlerta,listarAlertas,marcarAlertaLido,adicionarAuditoria,adicionarDevolucao,listarDevolucoes,adicionarNotificacao,listarNotificacoes,resumo,relatorio};
+module.exports={listarMovimentacoes,adicionarMovimentacao,adicionarRastreabilidade,listarRastreabilidade,buscarAlertaAberto,adicionarAlerta,fecharAlertasAbertos,listarAlertas,marcarAlertaLido,adicionarAuditoria,adicionarDevolucao,listarDevolucoes,adicionarNotificacao,listarNotificacoes,marcarNotificacaoLida,resumo,relatorio};

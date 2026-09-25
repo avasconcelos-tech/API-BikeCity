@@ -186,6 +186,13 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('alertas', 'mensagem', 'TEXT');
   adicionarColunaSeFaltar('alertas', 'lido', 'INTEGER DEFAULT 0');
   adicionarColunaSeFaltar('alertas', 'criado_em', 'TEXT');
+  db.exec(`UPDATE alertas SET lido = 1
+    WHERE lido = 0
+      AND id NOT IN (
+        SELECT MAX(id) FROM alertas WHERE lido = 0 GROUP BY produto_id
+      )`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_produto_aberto
+    ON alertas(produto_id) WHERE lido = 0`);
   adicionarColunaSeFaltar('auditoria', 'produto_id', 'INTEGER');
   adicionarColunaSeFaltar('auditoria', 'usuario_id', 'INTEGER');
   adicionarColunaSeFaltar('auditoria', 'acao', 'TEXT');

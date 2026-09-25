@@ -1044,7 +1044,15 @@ GET /api/v1/estoque/movimentacoes?produto_id=1
 
 ### Regra
 
-Alertas são gerados automaticamente quando o estoque total de um produto fica **menor ou igual a 5 itens**. Essa regra é aplicada nas operações de entrada, saída e ajuste manual, além do dashboard e dos relatórios.
+Alertas são gerados automaticamente quando o estoque total fica menor ou igual ao `estoque_minimo` configurado para o produto. A verificação é feita após entradas, saídas, ajustes manuais, devoluções e estornos. Há no máximo um alerta aberto por produto; ao voltar acima do mínimo, ele é marcado como lido. A criação de um novo alerta também gera notificações para `COMPRAS` e `LOGISTICA`.
+
+## 2.2. Listar e marcar notificações
+
+* **Listar:** `GET /api/v1/estoque/notificacoes` (opcionalmente filtrado por `?setor=COMPRAS`).
+* **Marcar como lida:** `PATCH /api/v1/estoque/notificacoes/:id/lida`.
+* **Permissões:** `OPERACIONAL`, `ANALISTA`, `GERENTE`.
+
+A rota de atualização retorna `404 Not Found` quando a notificação não existe.
 
 ### Resposta — 200 OK
 
@@ -1174,8 +1182,8 @@ Requer o envio de:
 * Subtrai a quantidade do `estoque_atual`.
 * Não permite saídas com quantidade maior do que o estoque físico disponível no momento.
 * Em caso de saldo insuficiente, retorna `Estoque insuficiente`.
-* Se o novo saldo atingir ou ficar abaixo de 5 itens, `alerta_gerado` retornará `true`.
-* Uma notificação será inserida no banco quando o estoque atingir o limite de alerta.
+* Se o novo saldo ficar menor ou igual ao `estoque_minimo` do produto, `alerta_gerado` retornará `true`.
+* `alerta_gerado` indica que o saldo está em nível de alerta; alertas abertos e notificações não são duplicados a cada movimentação.
 
 ### Body da Requisição
 

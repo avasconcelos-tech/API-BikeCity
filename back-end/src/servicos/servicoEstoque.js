@@ -66,6 +66,19 @@ function listarMovimentacoes(filtros = {}, page = 1, limit = 20){
 function listarAlertas(){return repositorioEstoque.listarAlertas();}
 function listarRastreabilidade(id=null){return repositorioEstoque.listarRastreabilidade(id);}
 
+function verificarEstoqueMinimo(produto) {
+  const estoqueBaixoAgora = estoqueBaixo(produto, produto.estoque_atual);
+  if (estoqueBaixoAgora) {
+    repositorioEstoque.adicionarAlerta({
+      produto_id: Number(produto.id),
+      mensagem: `Estoque baixo para ${produto.nome}`
+    });
+  } else {
+    repositorioEstoque.fecharAlertasAbertos(produto.id);
+  }
+  return estoqueBaixoAgora;
+}
+
 function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numeroNotaFiscal, itens, body={}) {
   const produto=repositorioProduto.buscarProdutoPorId(produtoId); if(!produto)return erro(404,'Produto não encontrado.'); if(!produto.ativo)return erro(400,'Produto inativo');
   const itensRastreaveis = Array.isArray(itens) && itens.length ? itens : (Array.isArray(body.itens_rastreaveis) ? body.itens_rastreaveis : []);
@@ -90,7 +103,7 @@ function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numero
     if (String(error.message).includes('UNIQUE')) return erro(409, 'Número de série ou identificador único já cadastrado.');
     throw error;
   }
-  if(estoqueBaixo(produto, novo)) repositorioEstoque.adicionarAlerta({produto_id:produto.id,mensagem:`Estoque baixo para ${produto.nome}`});
+  verificarEstoqueMinimo({ ...produto, estoque_atual: novo });
   return sucesso(201,'Entrada registrada com sucesso.',{movimentacao_id:mov.id,produto_id:Number(produtoId),quantidade_adicionada:n,novo_estoque_total:novo});
 }
 
@@ -120,7 +133,7 @@ function registrarSaida(produtoId,quantidade,destinatario,motivo,usuarioId,body=
     for(const r of rast) db.prepare('UPDATE rastreabilidade SET status=\'SAIDA\' WHERE id=?').run(r.id);
     return mov;
   });
-  const alerta=estoqueBaixo(p, novo);if(alerta){repositorioEstoque.adicionarAlerta({produto_id:p.id,mensagem:`Estoque baixo para ${p.nome}`});for(const setor of ['COMPRAS','LOGISTICA'])repositorioEstoque.adicionarNotificacao({setor,titulo:'Estoque baixo',mensagem:`${p.nome} atingiu o limite de ${p.estoque_minimo} itens.`,produto_id:p.id});}
+  const alerta=verificarEstoqueMinimo({ ...p, estoque_atual: novo });
   return sucesso(201,'Saída de estoque registrada com sucesso.',{movimentacao_id:mov.id,novo_estoque_total:novo,alerta_gerado:alerta});
 }
 function registrarAjusteManual(produtoId,novaQuantidade,justificativa,usuarioId){const p=repositorioProduto.buscarProdutoPorId(produtoId);if(!p)return erro(404,'Produto não encontrado.');const n=Number(novaQuantidade);if(!Number.isInteger(n)||n<0)return erro(400,'nova_quantidade deve ser um número inteiro maior ou igual a 0.');if(!justificativa||!String(justificativa).trim())return erro(400,'justificativa é obrigatória.');const antigo=p.estoque_atual;const data=new Date().toISOString();const mov=executarEmTransacao(()=>{repositorioProduto.atualizarEstoqueProduto(produtoId,n);const movimentacao=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'AJUSTE_MANUAL',quantidade:n-antigo,data_movimentacao:data,motivo:String(justificativa).trim(),observacao:`Estoque anterior: ${antigo}; novo estoque: ${n}`,estoque_anterior:antigo,estoque_novo:n});repositorioEstoque.adicionarAuditoria({produto_id:Number(produtoId),usuario_id:usuarioId,acao:'AJUSTE_MANUAL',antigo_valor:antigo,novo_valor:n,justificativa,data});return movimentacao;});const alerta=estoqueBaixo(p,n);if(alerta)repositorioEstoque.adicionarAlerta({produto_id:p.id,mensagem:`Estoque baixo para ${p.nome}`});return sucesso(201,'Ajuste manual realizado com sucesso.',{produto_id:Number(produtoId),estoque_anterior:antigo,estoque_atual:n,movimentacao_id:mov.id,log_auditoria_registrado:true,alerta_gerado:alerta});}
@@ -171,6 +184,7 @@ function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
     return movimentacao;
   });
 
+  verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
   return sucesso(201, 'Estorno registrado com sucesso.', {
     movimentacao_id: estorno.id,
     movimentacao_origem_id: Number(origem.id),
@@ -181,8 +195,10 @@ function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
     estoque_atual: novoEstoque
   });
 }
-function registrarAjusteManualComAuditoria(produtoId,novaQuantidade,justificativa,usuarioId){const produto=repositorioProduto.buscarProdutoPorId(produtoId);const antigo=produto?.estoque_atual;const resultado=registrarAjusteManual(produtoId,novaQuantidade,justificativa,usuarioId);if(resultado.statusCode===201&&!resultado.payload.dados.log_auditoria_registrado){repositorioEstoque.adicionarAuditoria({produto_id:Number(produtoId),usuario_id:usuarioId,acao:'AJUSTE_MANUAL',antigo_valor:antigo,novo_valor:Number(novaQuantidade),justificativa,data:new Date().toISOString()});resultado.payload.dados.log_auditoria_registrado=true;}return resultado;}
+function registrarAjusteManualComAuditoria(produtoId,novaQuantidade,justificativa,usuarioId){const produto=repositorioProduto.buscarProdutoPorId(produtoId);const antigo=produto?.estoque_atual;const resultado=registrarAjusteManual(produtoId,novaQuantidade,justificativa,usuarioId);if(resultado.statusCode===201&&!resultado.payload.dados.log_auditoria_registrado){repositorioEstoque.adicionarAuditoria({produto_id:Number(produtoId),usuario_id:usuarioId,acao:'AJUSTE_MANUAL',antigo_valor:antigo,novo_valor:Number(novaQuantidade),justificativa,data:new Date().toISOString()});resultado.payload.dados.log_auditoria_registrado=true;}if(resultado.statusCode===201){const produtoAtualizado=repositorioProduto.buscarProdutoPorId(produtoId);if(produtoAtualizado)verificarEstoqueMinimo(produtoAtualizado);}return resultado;}
+const registrarDevolucaoOriginal=registrarDevolucao;
+function registrarDevolucaoComVerificacao(dados,usuarioId){const resultado=registrarDevolucaoOriginal(dados,usuarioId);if(resultado.statusCode===201){const produto=repositorioProduto.buscarProdutoPorId(dados.produto_id);if(produto)verificarEstoqueMinimo(produto);}return resultado;}
 function obterResumo(){return repositorioEstoque.resumo();}
 function obterRelatorio(filtros={}){return repositorioEstoque.relatorio(filtros);} 
 function buscarPorCodigo(codigo){return db.prepare(`SELECT * FROM produtos WHERE ativo=1 AND codigo_interno=?`).get(codigo)||null;}
-module.exports={listarMovimentacoes,listarAlertas,listarRastreabilidade,registrarEntrada,registrarSaida,registrarAjusteManual:registrarAjusteManualComAuditoria,registrarDevolucao,registrarEstorno,obterResumo,obterRelatorio,buscarPorCodigo,validarRastreabilidade};
+module.exports={listarMovimentacoes,listarAlertas,listarRastreabilidade,registrarEntrada,registrarSaida,registrarAjusteManual:registrarAjusteManualComAuditoria,registrarDevolucao:registrarDevolucaoComVerificacao,registrarEstorno,obterResumo,obterRelatorio,buscarPorCodigo,validarRastreabilidade,verificarEstoqueMinimo};

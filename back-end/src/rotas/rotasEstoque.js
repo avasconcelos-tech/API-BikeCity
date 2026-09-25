@@ -9,6 +9,7 @@ router.get('/rastreabilidade',authenticate,todos,c.listarRastreabilidade);
 router.get('/alertas',authenticate,todos,c.listarAlertas);
 router.patch('/alertas/:id/lido',authenticate,todos,c.marcarAlerta);
 router.get('/notificacoes',authenticate,todos,c.notificacoes);
+router.patch('/notificacoes/:id/lida',authenticate,todos,c.marcarNotificacaoLida);
 router.get('/buscar-codigo/:codigo',authenticate,todos,c.buscarCodigo);
 router.get('/dashboard/resumo',authenticate,todos,c.resumo);
 router.get('/relatorios',authenticate,todos,c.relatorio);

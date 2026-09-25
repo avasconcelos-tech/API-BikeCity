@@ -38,6 +38,7 @@ function relatorio(req,res){
   return res.json({status:'sucesso',dados});
 }
 function notificacoes(req,res){const setor=req.query.setor||null;return res.json({status:'sucesso',dados:require('../repositorios/repositorioEstoque').listarNotificacoes(setor)});}
+function marcarNotificacaoLida(req,res){const marcada=require('../repositorios/repositorioEstoque').marcarNotificacaoLida(req.params.id);if(!marcada)return res.status(404).json({status:'erro',mensagem:'Notificação não encontrada'});return res.json({status:'sucesso',mensagem:'Notificação marcada como lida.'});}
 function buscarCodigo(req,res){const p=servicoEstoque.buscarPorCodigo(req.params.codigo);if(!p)return res.status(404).json({status:'erro',mensagem:'Produto não encontrado para o código informado.'});return res.json({status:'sucesso',dados:p});}
 function marcarAlerta(req,res){require('../repositorios/repositorioEstoque').marcarAlertaLido(req.params.id);return res.json({status:'sucesso',mensagem:'Alerta marcado como lido.'});}
-module.exports={listarMovimentacoes,listarAlertas,listarRastreabilidade,registrarEntrada,registrarSaida,registrarAjusteManual,registrarDevolucao,registrarEstorno,resumo,relatorio,notificacoes,buscarCodigo,marcarAlerta};
+module.exports={listarMovimentacoes,listarAlertas,listarRastreabilidade,registrarEntrada,registrarSaida,registrarAjusteManual,registrarDevolucao,registrarEstorno,resumo,relatorio,notificacoes,marcarNotificacaoLida,buscarCodigo,marcarAlerta};

@@ -181,6 +181,81 @@ test('lista alertas de estoque gerados', async () => {
   assert.ok(res.body.dados.some((alerta) => alerta.produto_id === 2 && alerta.mensagem.includes('Peça A')));
 });
 
+test('alertas e notificações acompanham o saldo nas movimentações e notificações podem ser marcadas como lidas', async () => {
+  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const headers = { Authorization: `Bearer ${token}` };
+
+  for (const pedido of ['PV-ALERTA-1', 'PV-ALERTA-2']) {
+    const saida = await request(app)
+      .post('/api/v1/estoque/saidas')
+      .set(headers)
+      .send({ produto_id: 2, quantidade: 1, destinatario: 'Setor A', motivo: 'Consumo', numero_pedido_venda: pedido });
+    assert.equal(saida.status, 201);
+  }
+
+  let alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
+  let notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
+  assert.equal(alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length, 1);
+  assert.equal(notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length, 2);
+
+  const notificacaoId = notificacoes.body.dados[0].id;
+  const marcarLida = await request(app)
+    .patch(`/api/v1/estoque/notificacoes/${notificacaoId}/lida`)
+    .set(headers);
+  assert.equal(marcarLida.status, 200);
+  notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
+  assert.equal(
+    notificacoes.body.dados.find((notificacao) => notificacao.id === notificacaoId).lida,
+    true
+  );
+  const notificacaoInexistente = await request(app)
+    .patch('/api/v1/estoque/notificacoes/999999/lida')
+    .set(headers);
+  assert.equal(notificacaoInexistente.status, 404);
+
+  const entrada = await request(app)
+    .post('/api/v1/estoque/entradas')
+    .set(headers)
+    .send({
+      produto_id: 2, quantidade: 2, fornecedor_id: 1,
+      numero_nota_fiscal: 'NF-RECUPERA', numero_pedido_compra: 'PC-RECUPERA'
+    });
+  assert.equal(entrada.status, 201);
+  alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
+  assert.equal(alertas.body.dados.some((alerta) => alerta.produto_id === 2 && !alerta.lido), false);
+
+  const ajuste = await request(app)
+    .post('/api/v1/estoque/ajuste-manual')
+    .set(headers)
+    .send({ produto_id: 2, nova_quantidade: 2, justificativa: 'Ajuste para validar alerta' });
+  assert.equal(ajuste.status, 201);
+  alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
+  notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
+  assert.equal(alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length, 1);
+  assert.equal(notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length, 4);
+
+  const recuperarPorAjuste = await request(app)
+    .post('/api/v1/estoque/ajuste-manual')
+    .set(headers)
+    .send({ produto_id: 2, nova_quantidade: 4, justificativa: 'Reposição confirmada' });
+  assert.equal(recuperarPorAjuste.status, 201);
+
+  const devolucao = await request(app)
+    .post('/api/v1/estoque/devolucoes')
+    .set(headers)
+    .send({
+      produto_id: 2, quantidade: 1, origem: 'PARA_FORNECEDOR',
+      motivo: 'Devolução ao fornecedor', estado_produto: 'DANIFICADO'
+    });
+  assert.equal(devolucao.status, 201);
+
+  alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
+  notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
+  assert.equal(alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length, 1);
+  assert.equal(notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length, 6);
+});
+
 test('produto específico, atualização e inativação funcionam com lista filtrada', async () => {
   const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
