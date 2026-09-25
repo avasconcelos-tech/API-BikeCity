@@ -429,6 +429,34 @@ test('entrada registra dados fiscais e rastreabilidade no histórico', async () 
   assert.equal(rast.status,200);assert.equal(rast.body.dados[0].numero_serie,'BAT-R');
 });
 
+test('entrada preserva séries informadas e saída usa a série selecionada', async () => {
+  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const entrada = await request(app)
+    .post('/api/v1/estoque/entradas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ produto_id: 1, quantidade: 2, fornecedor_id: 1, numero_nota_fiscal: 'NF-S', numero_pedido_compra: 'PC-S', itens_rastreaveis: [{ numero_serie: 'SERIE-A', data_validade: '2027-01-01' }, { numero_serie: 'SERIE-B', data_validade: '2027-01-01' }] });
+
+  assert.equal(entrada.status, 201);
+  const rastreabilidade = await request(app)
+    .get('/api/v1/estoque/rastreabilidade?produto_id=1')
+    .set('Authorization', `Bearer ${token}`);
+  const serieSelecionada = rastreabilidade.body.dados.find((item) => item.numero_serie === 'SERIE-B');
+  assert.ok(serieSelecionada);
+
+  const saida = await request(app)
+    .post('/api/v1/estoque/saidas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ produto_id: 1, quantidade: 1, destinatario: 'Cliente A', motivo: 'Venda', numero_pedido_venda: 'PV-S', rastreabilidade_ids: [serieSelecionada.id] });
+  assert.equal(saida.status, 201);
+
+  const depois = await request(app)
+    .get('/api/v1/estoque/rastreabilidade?produto_id=1')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(depois.body.dados.find((item) => item.numero_serie === 'SERIE-B').status, 'SAIDA');
+  assert.equal(depois.body.dados.find((item) => item.numero_serie === 'SERIE-A').status, 'EM_ESTOQUE');
+});
+
 test('saída exige pedido de venda e registra destinação', async () => {
   const login=await request(app).post('/api/v1/auth/login').send({email:'gerente@teste.com',senha:'senha123'});const token=login.body.dados.token;
   const bad=await request(app).post('/api/v1/estoque/saidas').set('Authorization',`Bearer ${token}`).send({produto_id:2,quantidade:1,destinatario:'Vendas',motivo:'Venda'});assert.equal(bad.status,400);
