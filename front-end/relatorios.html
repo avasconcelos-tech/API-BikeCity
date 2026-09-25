@@ -1,15 +1,145 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BikeCity - Relatórios</title><link rel="stylesheet" href="./ativos/css/style.css"></head><body><div class="wrapper"><nav class="sidebar">
-    <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="8" cy="23" r="5"></circle><circle cx="24" cy="23" r="5"></circle><path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span>
-        <span class="brand-name">Bike<span>City</span></span>
-    </a>
-    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false"><span></span></button>
-    <ul class="sidebar-nav">
-        <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="produtos.html">Produtos</a></li>
-        <li><a href="estoque.html">Estoque</a></li>
-        <li><a href="relatorios.html" class="NAV_REL">Relatórios</a></li>
-        <li><a href="usuarios.html">Usuários</a></li>
-    </ul>
-</nav><main class="content"><div class="page-title"><h1>Relatórios Gerenciais</h1><button id="btn-imprimir">Imprimir</button></div><div class="cards-grid"><div class="card"><h3>Produtos</h3><p id="r-produtos">-</p></div><div class="card"><h3>Movimentações</h3><p id="r-movs">-</p></div><div class="card"><h3>Alertas</h3><p id="r-alertas">-</p></div></div><h2>Estoque atual</h2><div class="table-responsive"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Localização</th></tr></thead><tbody id="tbody-relatorio"></tbody></table></div></main></div><script type="module">import { inicializarNavegacao } from "./js/utilitarios/navigation.js"; inicializarNavegacao();</script>
-    <script type="module" src="./js/views/relatorios.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BikeCity - Relatórios</title>
+    <link rel="stylesheet" href="./ativos/css/style.css" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <nav class="sidebar">
+        <a class="brand" href="dashboard.html" aria-label="BikeCity - Dashboard">
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 32 32">
+              <circle cx="8" cy="23" r="5"></circle>
+              <circle cx="24" cy="23" r="5"></circle>
+              <path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg
+          ></span>
+          <span class="brand-name">Bike<span>City</span></span>
+        </a>
+        <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false">
+          <span></span>
+        </button>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="produtos.html">Produtos</a></li>
+          <li><a href="estoque.html">Estoque</a></li>
+          <li><a href="relatorios.html" class="NAV_REL">Relatórios</a></li>
+          <li><a href="usuarios.html">Usuários</a></li>
+        </ul>
+      </nav>
+      <main class="content">
+        <div class="page-title">
+          <h1>Relatórios Gerenciais</h1>
+          <div>
+            <button id="btn-exportar" type="button">Exportar CSV</button
+            ><button id="btn-imprimir" type="button">Imprimir</button>
+          </div>
+        </div>
+        <form id="filtro-periodo">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="periodo-inicio">Data inicial</label
+              ><input id="periodo-inicio" type="date" />
+            </div>
+            <div class="form-group">
+              <label for="periodo-fim">Data final</label><input id="periodo-fim" type="date" />
+            </div>
+          </div>
+          <button type="submit">Aplicar filtro</button
+          ><button id="btn-limpar-filtro" class="btn-secondary" type="button">Limpar filtro</button>
+        </form>
+        <div class="cards-grid">
+          <div class="card">
+            <h3>Produtos</h3>
+            <p id="r-produtos">-</p>
+          </div>
+          <div class="card">
+            <h3>Movimentações</h3>
+            <p id="r-movs">-</p>
+          </div>
+          <div class="card card-alertas">
+            <h3>Alertas registrados</h3>
+            <p id="r-alertas">-</p>
+          </div>
+        </div>
+        <section>
+          <h2>Estoque atual</h2>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Categoria</th>
+                  <th>Estoque</th>
+                  <th>Custo</th>
+                  <th>Localização</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-relatorio"></tbody>
+            </table>
+          </div>
+        </section>
+        <section>
+          <h2>Movimentações</h2>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Produto</th>
+                  <th>Tipo</th>
+                  <th>Quantidade</th>
+                  <th>Motivo</th>
+                  <th>Usuário</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-movimentacoes"></tbody>
+            </table>
+          </div>
+        </section>
+        <section>
+          <h2>Devoluções</h2>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Produto</th>
+                  <th>Quantidade</th>
+                  <th>Origem</th>
+                  <th>Motivo</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-devolucoes"></tbody>
+            </table>
+          </div>
+        </section>
+        <section>
+          <h2>Alertas registrados</h2>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Produto</th>
+                  <th>Mensagem</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-alertas"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module">
+      import { inicializarNavegacao } from './js/utilitarios/navigation.js';
+      inicializarNavegacao();
+    </script>
+    <script type="module" src="./js/views/relatorios.js"></script>
+  </body>
+</html>

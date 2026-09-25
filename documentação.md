@@ -990,7 +990,7 @@ GET /api/v1/estoque/movimentacoes?produto_id=1
 
 ### Regra
 
-Alertas são gerados automaticamente pelo sistema sempre que uma operação de saída reduz o estoque total de um produto para um valor **menor ou igual ao seu `estoque_minimo`**.
+Alertas são gerados automaticamente quando o estoque total de um produto fica **menor ou igual a 5 itens**. Essa regra é aplicada nas operações de entrada, saída e ajuste manual, além do dashboard e dos relatórios.
 
 ### Resposta — 200 OK
 
@@ -1120,7 +1120,7 @@ Requer o envio de:
 * Subtrai a quantidade do `estoque_atual`.
 * Não permite saídas com quantidade maior do que o estoque físico disponível no momento.
 * Em caso de saldo insuficiente, retorna `Estoque insuficiente`.
-* Se o novo saldo atingir ou ficar abaixo de `estoque_minimo`, `alerta_gerado` retornará `true`.
+* Se o novo saldo atingir ou ficar abaixo de 5 itens, `alerta_gerado` retornará `true`.
 * Uma notificação será inserida no banco quando o estoque atingir o limite de alerta.
 
 ### Body da Requisição
@@ -1181,6 +1181,7 @@ Requer o envio de:
 
 * Sobrescreve o valor de `estoque_atual` para o valor exato informado em `nova_quantidade`.
 * Registra obrigatoriamente um log na tabela `auditoria`.
+* Registra também uma movimentação do tipo `AJUSTE_MANUAL` no histórico de estoque.
 * O log contém:
 
   * justificativa;

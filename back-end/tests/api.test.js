@@ -239,6 +239,7 @@ test('ajuste manual exige perfil GERENTE e registra auditoria', async () => {
 
   assert.equal(res.status, 201);
   assert.equal(res.body.dados.log_auditoria_registrado, true);
+  assert.ok(res.body.dados.movimentacao_id);
 });
 
 test('lista movimentações do estoque com filtro por produto', async () => {
