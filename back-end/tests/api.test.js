@@ -229,6 +229,44 @@ test('produto específico, atualização e inativação funcionam com lista filt
   assert.ok(listaComInativos.body.dados.some((produto) => produto.id === 2 && produto.ativo === false));
 });
 
+test('produtos inativos não recebem movimentações de estoque e só podem ser reativados explicitamente', async () => {
+  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+
+  const inativacao = await request(app)
+    .delete('/api/v1/produtos/2')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(inativacao.status, 400);
+  assert.match(inativacao.body.mensagem, /saldo|estoque/i);
+
+  const produto = await request(app)
+    .get('/api/v1/produtos/2?incluirInativos=true')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(produto.status, 200);
+  assert.equal(produto.body.dados.ativo, true);
+
+  const movimentacoes = await Promise.all([
+    request(app).post('/api/v1/estoque/entradas').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, fornecedor_id: 1, numero_nota_fiscal: 'NF-999', numero_pedido_compra: 'PC-999' }),
+    request(app).post('/api/v1/estoque/saidas').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, destinatario: 'Setor A', motivo: 'Uso interno', numero_pedido_venda: 'PV-999' }),
+    request(app).post('/api/v1/estoque/ajuste-manual').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, nova_quantidade: 1, justificativa: 'Ajuste de teste' }),
+    request(app).post('/api/v1/estoque/devolucoes').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, origem: 'CLIENTE', motivo: 'Devolução', estado_produto: 'INTACTO', numero_pedido_venda: 'PV-DEV', reaproveitavel: true })
+  ]);
+
+  for (const res of movimentacoes) {
+    assert.equal(res.status, 400);
+    assert.match(res.body.mensagem, /Produto inativo/i);
+  }
+
+  const reativacao = await request(app)
+    .patch('/api/v1/produtos/2/reativar')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(reativacao.status, 200);
+  assert.equal(reativacao.body.dados.ativo, true);
+});
+
 test('ajuste manual rejeita nova_quantidade inválida', async () => {
   const gerenteLogin = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = gerenteLogin.body.dados.token;
