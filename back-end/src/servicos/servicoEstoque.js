@@ -75,7 +75,7 @@ function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numero
     if(tipo!=='NENHUMA') {
       const origemItens = itensRastreaveis.length ? itensRastreaveis : [body];
       const itens = tipo === 'PECA_SEGURANCA' && origemItens.length === 1 ? Array.from({ length: n }, () => origemItens[0]) : origemItens;
-      for (const item of itens) repositorioEstoque.adicionarRastreabilidade({produto_id:Number(produtoId),movimentacao_id:mov.id,tipo,numero_serie:item.numero_serie||null,lote:item.lote||null,data_validade:item.data_validade||null,identificador_unico:item.identificador_unico||null,localizacao:item.localizacao||body.localizacao||produto.localizacao_deposito});
+      for (const item of itens) repositorioEstoque.adicionarRastreabilidade({produto_id:Number(produtoId),movimentacao_id:movimentacao.id,tipo,numero_serie:item.numero_serie||null,lote:item.lote||null,data_validade:item.data_validade||null,identificador_unico:item.identificador_unico||null,localizacao:item.localizacao||body.localizacao||produto.localizacao_deposito});
     }
     return movimentacao;
   });
@@ -88,6 +88,15 @@ function registrarSaida(produtoId,quantidade,destinatario,motivo,usuarioId,body=
   let e=quantidadePositiva(quantidade)||obrigatorio(destinatario,'destinatario')||obrigatorio(motivo,'motivo')||obrigatorio(body.numero_pedido_venda,'numero_pedido_venda');if(e)return erro(400,e);
   const n=Number(quantidade);if(n>p.estoque_atual)return erro(400,'Estoque insuficiente para a quantidade solicitada.');
   const novo=p.estoque_atual-n, agora=new Date().toISOString();
+<<<<<<< HEAD
+    const disponiveis = repositorioEstoque.listarRastreabilidade(produtoId).filter(x=>x.status==='EM_ESTOQUE');
+    const idsSolicitados = Array.isArray(body.rastreabilidade_ids) ? body.rastreabilidade_ids.map(Number) : [];
+    const rast = idsSolicitados.length ? disponiveis.filter((item) => idsSolicitados.includes(Number(item.id))) : disponiveis.slice(0,n);
+    if (tipoRastreabilidade(p) !== 'NENHUMA' && (idsSolicitados.length !== n || rast.length !== n)) return erro(400, `Selecione exatamente ${n} item(ns) de rastreabilidade disponíveis.`);
+  const mov = executarEmTransacao(() => {
+    repositorioProduto.atualizarEstoqueProduto(produtoId,novo);
+    const movimentacao=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'SAIDA',quantidade:n,data_movimentacao:agora,numero_pedido_venda:body.numero_pedido_venda,destinatario,motivo,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao,observacao:body.observacao,estoque_anterior:p.estoque_atual,estoque_novo:novo});
+=======
   const mov = executarEmTransacao(() => {
     repositorioProduto.atualizarEstoqueProduto(produtoId,novo);
     const mov=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'SAIDA',quantidade:n,data_movimentacao:agora,numero_pedido_venda:body.numero_pedido_venda,destinatario,motivo,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao,observacao:body.observacao,estoque_anterior:p.estoque_atual,estoque_novo:novo});
@@ -95,6 +104,7 @@ function registrarSaida(produtoId,quantidade,destinatario,motivo,usuarioId,body=
     const idsSolicitados = Array.isArray(body.rastreabilidade_ids) ? body.rastreabilidade_ids.map(Number) : [];
     const rast = idsSolicitados.length ? disponiveis.filter((item) => idsSolicitados.includes(Number(item.id))) : disponiveis.slice(0,n);
     if (tipoRastreabilidade(p) !== 'NENHUMA' && (idsSolicitados.length !== n || rast.length !== n)) { db.exec('ROLLBACK'); return erro(400, `Selecione exatamente ${n} item(ns) de rastreabilidade disponíveis.`); }
+>>>>>>> db8bfa222c8f70298fb32d30545ef955cdccfe1c
     for(const r of rast) db.prepare('UPDATE rastreabilidade SET status=\'SAIDA\' WHERE id=?').run(r.id);
     return movimentacao;
   });
