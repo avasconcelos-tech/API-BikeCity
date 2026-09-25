@@ -1,28 +1,37 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BikeCity - Login</title>
-    <link rel="stylesheet" href="./ativos/css/style.css">
-</head>
-<body class="login-body">
+    <link rel="stylesheet" href="./ativos/css/style.css" />
+  </head>
+  <body class="login-body">
     <div class="login-card">
-        <div class="brand login-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="8" cy="23" r="5"></circle><circle cx="24" cy="23" r="5"></circle><path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span><span class="brand-name">Bike<span>City</span></span></div>
-        <p style="margin-bottom: 20px; color: #64748b;">Faça login para continuar</p>
-        <form id="form-login">
-            <div class="form-group">
-                <label for="email">E-mail</label>
-                <input type="email" id="email" required placeholder="seu@email.com">
-            </div>
-            <div class="form-group">
-                <label for="senha">Senha</label>
-                <input type="password" id="senha" required placeholder="******">
-                <label class="show-password" for="mostrar-senha"><input type="checkbox" id="mostrar-senha"> Mostrar senha</label>
-            </div>
-            <button type="submit" id="btn-entrar">Entrar</button>
-        </form>
+      <div class="brand login-brand">
+        <span class="brand-mark" aria-hidden="true"
+          ><svg viewBox="0 0 32 32">
+            <circle cx="8" cy="23" r="5"></circle>
+            <circle cx="24" cy="23" r="5"></circle>
+            <path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span
+        ><span class="brand-name">Bike<span>City</span></span>
+      </div>
+      <p class="login-hint">Faça login para continuar</p>
+      <form id="form-login">
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" required placeholder="seu@email.com" />
+        </div>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" required placeholder="******" />
+          <label class="show-password" for="mostrar-senha"
+            ><input type="checkbox" id="mostrar-senha" /> Mostrar senha</label
+          >
+        </div>
+        <button type="submit" id="btn-entrar">Entrar</button>
+      </form>
     </div>
     <script type="module" src="./js/views/login.js"></script>
-</body>
+  </body>
 </html>
