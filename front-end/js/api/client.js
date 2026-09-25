@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './config.js';
-import { obterToken } from '../utilitarios/auth.js';
+import { obterToken, removerToken } from '../utilitarios/auth.js';
 
 export async function apiFetch(endpoint, options = {}) {
   const token = obterToken();
@@ -32,6 +32,12 @@ export async function apiFetch(endpoint, options = {}) {
     dados = texto ? JSON.parse(texto) : {};
   } catch {
     dados = {};
+  }
+
+  if (resposta.status === 401 && token && !endpoint.includes('/auth/login')) {
+    removerToken();
+    window.location.href = './login.html?expirou=1';
+    throw new Error('Sua sessão expirou. Faça login novamente.');
   }
 
   if (!resposta.ok) {

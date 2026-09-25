@@ -43,7 +43,9 @@ async function atualizarProdutos() {
   produtos = (await getProdutos()).dados || [];
   preencherTodosProdutos();
 }
-await atualizarProdutos();
+await atualizarProdutos().catch((erro) => {
+  mostrarToast(erro.message || 'Não foi possível carregar os produtos do estoque.', 'erro');
+});
 function pSelecionado(id) {
   return produtos.find((p) => p.id === Number($(id).value));
 }

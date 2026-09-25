@@ -6,7 +6,10 @@ import { estaEmAlerta } from '../utilitarios/estoque.js';
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
-const resposta = await getRelatorio();
+const resposta = await getRelatorio().catch((erro) => {
+  mostrarToast(erro.message || 'Não foi possível carregar o relatório.', 'erro');
+  return { dados: {} };
+});
 const dados = resposta.dados;
 const estoque = dados.estoque || [];
 const movimentacoes = dados.movimentacoes || [];
