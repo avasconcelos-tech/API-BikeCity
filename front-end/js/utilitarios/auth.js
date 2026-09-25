@@ -30,9 +30,11 @@ export function checarAutenticacao() {
   const token = obterToken();
   const usuario = obterUsuarioLogado();
   const ultima = Number(localStorage.getItem(LAST_ACTIVITY) || 0);
-  if (!token || !usuario || (ultima && Date.now() - ultima > INATIVIDADE_MS)) {
+  const sessaoExpirada = Boolean(token && !usuario);
+  const inativo = Boolean(ultima && Date.now() - ultima > INATIVIDADE_MS);
+  if (!token || sessaoExpirada || inativo) {
     removerToken();
-    window.location.href = './login.html';
+    window.location.href = sessaoExpirada || inativo ? './login.html?expirou=1' : './login.html';
     return false;
   }
   ['click', 'keydown', 'mousemove', 'touchstart'].forEach((e) =>
@@ -42,7 +44,7 @@ export function checarAutenticacao() {
     const u = Number(localStorage.getItem(LAST_ACTIVITY) || 0);
     if (u && Date.now() - u > INATIVIDADE_MS) {
       removerToken();
-      window.location.href = './login.html';
+      window.location.href = './login.html?expirou=1';
     }
   }, 60000);
   return true;

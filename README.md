@@ -36,57 +36,9 @@ O BikeCity organiza esses processos em uma solução única, oferecendo rastreab
 
 ## Arquitetura do sistema
 A estrutura do projeto está dividida em camadas:
-- Front-end: interface web em HTML, CSS e JavaScript;
-- Back-end: API REST com Express;
-- Persistência: banco SQLite;
-- Segurança: autenticação JWT e controle por perfil;
-- Armazenamento de arquivos: pasta uploads;
-- Testes: validação da API via Node.js test runner.
-
-## Estrutura do projeto
-text
-API-BikeCity/
-├── back-end/
-│   └── src/
-│       ├── app.js
-│       ├── server.js
-│       ├── configuracoes/
-│       ├── controladores/
-│       ├── repositorios/
-│       ├── rotas/
-│       ├── servicos/
-│       └── tests/
-├── front-end/
-│   ├── ativos/
-│   ├── js/
-│   ├── dashboard.html
-│   ├── estoque.html
-│   ├── login.html
-│   ├── produtos.html
-│   ├── relatorios.html
-│   └── usuarios.html
-├── uploads/
-├── package.json
-├── README.md
-├── README_REDE_LOCAL.md
-├── documentação.md
-├── iniciar-rede.bat
-├── liberar-porta-3000-firewall.bat
-├── database.sqlite
-└── Db_bikecity.sqlite.sql## Tecnologias utilizadas
-
-## Tecnologias utilizadas
-- Node.js
-- Express.js
-- SQLite
-- JWT
-- bcryptjs
-- Multer
-- CORS
-- HTML, CSS e JavaScript
--Supertest
-
-## Requisitos
--Node.js 18 ou superior
--npm
--Ambiente Windows recomendado para uso local e rede interna
+Front-end: interface web em HTML, CSS e JavaScript;
+Back-end: API REST com Express;
+Persistência: banco SQLite;
+Segurança: autenticação JWT e controle por perfil;
+Armazenamento de arquivos: pasta uploads;
+Testes: validação da API via Node.js test runner.

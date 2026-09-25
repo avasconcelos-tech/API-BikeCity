@@ -520,6 +520,19 @@ table {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+.product-filters {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.product-filters label {
+  margin: 0;
+}
+.product-filters .show-password {
+  white-space: nowrap;
+}
 .products-table {
   min-width: 900px;
   table-layout: auto;
@@ -723,6 +736,9 @@ tbody tr:hover {
   .form-row {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+  .product-filters {
+    grid-template-columns: 1fr;
   }
   th,
   td {

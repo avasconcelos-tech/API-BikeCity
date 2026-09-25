@@ -23,6 +23,17 @@ export function putProduto(id, dados) {
     body: JSON.stringify(dados),
   });
 }
+export function deleteProduto(id) {
+  return apiFetch(`/api/v1/produtos/${id}`, { method: 'DELETE' });
+}
+export function reativarProduto(id) {
+  return apiFetch(`/api/v1/produtos/${id}/ativar`, { method: 'PATCH' });
+}
+export function postImagemProduto(id, arquivo) {
+  const dados = new FormData();
+  dados.append('imagem', arquivo);
+  return apiFetch(`/api/v1/produtos/${id}/imagem`, { method: 'POST', body: dados });
+}
 export function postEntradaEstoque(dados) {
   return apiFetch('/api/v1/estoque/entradas', {
     method: 'POST',

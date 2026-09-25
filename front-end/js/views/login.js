@@ -6,6 +6,10 @@ import { mostrarToast } from '../utilitarios/ui.js';
 const formLogin = document.getElementById('form-login');
 habilitarMostrarSenha('senha', 'mostrar-senha');
 
+if (new URLSearchParams(window.location.search).get('expirou') === '1') {
+  mostrarToast('Sua sessão expirou. Faça login novamente.', 'erro');
+}
+
 formLogin.addEventListener('submit', async (e) => {
   e.preventDefault();
 
