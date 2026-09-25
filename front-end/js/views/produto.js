@@ -29,6 +29,7 @@ async function carregarFornecedores() {
 }
 const usuario = obterUsuarioLogado();
 const podeEditar = usuario?.perfil === 'ANALISTA' || usuario?.perfil === 'GERENTE';
+$('th-acao-produto').hidden = !podeEditar;
 const modalEdicao = $('modal-editar-produto');
 let produtoEmEdicao = null;
 function abrirEdicao(produto) {
