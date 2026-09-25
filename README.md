@@ -88,7 +88,7 @@ API-BikeCity/
 
 ## Requisitos
 
-- Node.js 22 ou superior
+- Node.js 22.5 ou superior
 - npm
 - Compatível com Windows, macOS e Linux
 
@@ -135,7 +135,7 @@ http://localhost:5500/login.html
 - `POST /api/v1/estoque/entradas`
 - `POST /api/v1/estoque/saidas`
 - `GET /api/v1/dashboard/resumo`
-- `POST /api/v1/uploads/imagens`
+- `POST /api/v1/uploads/imagens` (envie `produto_id` como campo do formulário)
 
 ## Testes
 

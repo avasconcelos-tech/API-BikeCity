@@ -4,6 +4,9 @@
   "description": "API REST para gestão de estoque e rastreabilidade",
   "main": "src/server.js",
   "type": "commonjs",
+  "engines": {
+    "node": ">=22.5"
+  },
   "scripts": {
     "start": "node --no-warnings back-end/src/server.js",
     "dev": "node --no-warnings --watch back-end/src/server.js",
@@ -18,12 +21,10 @@
     "express": "^4.21.0",
     "file-type": "^22.0.1",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.2.0",
-    "mysql2": "^3.23.3",
-    "sqlite3": "^6.0.1",
-    "supertest": "^7.1.0"
+    "multer": "^2.2.0"
   },
   "devDependencies": {
-    "prettier": "^3.9.9"
+    "prettier": "^3.9.9",
+    "supertest": "^7.1.0"
   }
 }

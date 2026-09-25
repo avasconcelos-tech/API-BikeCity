@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const { app, resetarEstado } = require('../src/server');
@@ -472,10 +474,16 @@ test('upload de imagem salva arquivo na pasta uploads', async () => {
   const res = await request(app)
     .post('/api/v1/uploads/imagens')
     .set('Authorization', `Bearer ${token}`)
+    .field('produto_id', '2')
     .attach('imagem', pngValido, { filename: 'teste.png', contentType: 'image/png' });
 
   assert.equal(res.status, 201);
   assert.match(res.body.dados.caminho, /\/uploads\//);
+  assert.equal(res.body.dados.produto_id, 2);
+  const produto = await request(app)
+    .get('/api/v1/produtos/2')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(produto.body.dados.imagem_url, res.body.dados.caminho);
 });
 
 test('fornecedor é criado e consultado com validação de produto', async () => {
@@ -609,13 +617,23 @@ test('upload de imagem vincula ao produto correto', async () => {
   assert.equal(res.status, 201);
   assert.match(res.body.dados.caminho, /\/uploads\//);
   assert.equal(res.body.dados.produto_id, 1);
+  const imagemAntiga = path.join(__dirname, '../uploads', path.basename(res.body.dados.caminho));
+  assert.equal(fs.existsSync(imagemAntiga), true);
+
+  const substituicao = await request(app)
+    .post('/api/v1/produtos/1/imagem')
+    .set('Authorization', `Bearer ${token}`)
+    .attach('imagem', pngValido, { filename: 'produto1-nova.png', contentType: 'image/png' });
+
+  assert.equal(substituicao.status, 201);
+  assert.equal(fs.existsSync(imagemAntiga), false);
 
   const produtoAtualizado = await request(app)
     .get('/api/v1/produtos/1')
     .set('Authorization', `Bearer ${token}`);
 
   assert.equal(produtoAtualizado.status, 200);
-  assert.equal(produtoAtualizado.body.dados.imagem_url, res.body.dados.caminho);
+  assert.equal(produtoAtualizado.body.dados.imagem_url, substituicao.body.dados.caminho);
 });
 
 test('upload de imagem para produto inexistente retorna 404', async () => {

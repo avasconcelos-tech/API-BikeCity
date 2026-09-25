@@ -1,9 +1,8 @@
 const express = require('express');
-const fs = require('fs');
 const controladorProduto = require('../controladores/controladorProduto');
+const controladorUpload = require('../controladores/controladorUpload');
 const { validarAutenticacao, autorizarPerfil } = require('../servicos/servicoAutenticacao');
 const upload = require('../configuracoes/multer');
-const repositorioProduto = require('../repositorios/repositorioProduto');
 
 const router = express.Router();
 
@@ -15,14 +14,7 @@ router.put('/:id', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), 
 router.delete('/:id', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.inativarProduto);
 router.patch('/:id/ativar', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), controladorProduto.reativarProduto);
 
-router.post('/:id/imagem', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), (req, res) => {
-  const produtoId = Number(req.params.id);
-  const produto = repositorioProduto.buscarProdutoPorId(produtoId);
-
-  if (!produto) {
-    return res.status(404).json({ status: 'erro', mensagem: 'Produto não encontrado' });
-  }
-
+router.post('/:id/imagem', validarAutenticacao, autorizarPerfil('ANALISTA', 'GERENTE'), (req, res, next) => {
   upload.single('imagem')(req, res, async (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -32,36 +24,7 @@ router.post('/:id/imagem', validarAutenticacao, autorizarPerfil('ANALISTA', 'GER
       return res.status(400).json({ status: 'erro', mensagem: err.message || 'Arquivo inválido' });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ status: 'erro', mensagem: 'Nenhuma imagem enviada' });
-    }
-
-    try {
-      // Importação dinâmica para contornar módulo ESM
-      const { fileTypeFromBuffer } = await import('file-type');
-      const dadosArquivo = await fs.promises.readFile(req.file.path);
-      const tipoArquivo = await fileTypeFromBuffer(dadosArquivo);
-
-      if (!tipoArquivo || !['image/png', 'image/jpeg'].includes(tipoArquivo.mime)) {
-        await fs.promises.unlink(req.file.path).catch(() => {});
-        return res.status(400).json({ status: 'erro', mensagem: 'Arquivo inválido: apenas imagens PNG e JPG/JPEG válidas.' });
-      }
-
-      const caminhoImagem = `/uploads/${req.file.filename}`;
-      repositorioProduto.atualizarProduto(produtoId, { imagem_url: caminhoImagem });
-
-      return res.status(201).json({
-        status: 'sucesso',
-        mensagem: 'Imagem do produto enviada com sucesso',
-        dados: {
-          produto_id: produtoId,
-          nomeArquivo: req.file.filename,
-          caminho: caminhoImagem
-        }
-      });
-    } catch (error) {
-      return res.status(400).json({ status: 'erro', mensagem: 'Arquivo inválido' });
-    }
+    return controladorUpload.vincularImagemProduto(req, res, next);
   });
 });
 

@@ -1,18 +1,16 @@
-function fazerUploadImagem(req, res) {
-  if (!req.file) {
-    return res.status(400).json({ status: 'erro', mensagem: 'Arquivo de imagem inválido ou ausente' });
+const servicoImagemProduto = require('../servicos/servicoImagemProduto');
+
+async function vincularImagemProduto(req, res, next) {
+  try {
+    const produtoId = req.params.id ?? req.body?.produto_id;
+    const dados = await servicoImagemProduto.vincularImagem(produtoId, req.file);
+    const mensagem = req.params.id ? 'Imagem do produto enviada com sucesso' : 'Imagem enviada e vinculada ao produto com sucesso';
+    return res.status(201).json({ status: 'sucesso', mensagem, dados });
+  } catch (erro) {
+    return next(erro);
   }
-
-  const caminhoRelativo = `/uploads/${req.file.filename}`;
-
-  return res.status(201).json({
-    status: 'sucesso',
-    dados: {
-      caminho: caminhoRelativo
-    }
-  });
 }
 
 module.exports = {
-  fazerUploadImagem
+  vincularImagemProduto
 };
