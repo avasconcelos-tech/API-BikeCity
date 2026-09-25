@@ -71,8 +71,10 @@ export function deleteUsuario(id) {
 export function getRelatorio() {
   return apiFetch('/api/v1/estoque/relatorios');
 }
-export function getRastreabilidade() {
-  return apiFetch('/api/v1/estoque/rastreabilidade');
+export function getRastreabilidade(produtoId = '') {
+  return apiFetch(
+    `/api/v1/estoque/rastreabilidade${produtoId ? `?produto_id=${encodeURIComponent(produtoId)}` : ''}`,
+  );
 }
 export function getNotificacoes(setor = '') {
   return apiFetch(
