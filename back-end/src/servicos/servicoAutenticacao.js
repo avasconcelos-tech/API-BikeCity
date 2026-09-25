@@ -34,6 +34,11 @@ function createToken(usuario) {
 }
 
 function loginUser(email, senha) {
+  if (typeof email !== 'string' || !email.trim() || typeof senha !== 'string') {
+    return { statusCode: 400, payload: { status: 'erro', mensagem: 'E-mail e senha são obrigatórios e devem ser textos.' } };
+  }
+
+  email = email.trim().toLowerCase();
   const usuario = repositorio.buscarUsuarioPorEmail(email);
 
   if (!usuario) {
