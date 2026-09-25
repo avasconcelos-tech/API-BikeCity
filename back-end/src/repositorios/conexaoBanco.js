@@ -174,6 +174,12 @@ function criarEstrutura() {
   adicionarColunaSeFaltar('auditoria', 'novo_valor', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'justificativa', 'TEXT');
   adicionarColunaSeFaltar('auditoria', 'data', 'TEXT');
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rastreabilidade_numero_serie
+    ON rastreabilidade(numero_serie)
+    WHERE numero_serie IS NOT NULL AND TRIM(numero_serie) <> ''`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rastreabilidade_identificador_unico
+    ON rastreabilidade(identificador_unico)
+    WHERE identificador_unico IS NOT NULL AND TRIM(identificador_unico) <> ''`);
   corrigirProdutosComColunasTrocadas();
 }
 
