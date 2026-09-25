@@ -25,11 +25,13 @@ function validarRastreabilidade(produto, body={}) {
   const itens = Array.isArray(body.itens_rastreaveis) ? body.itens_rastreaveis : [];
   const quantidade = Number(body.quantidade || 1);
   const dadosItem = quantidade === 1 && itens.length ? { ...body, ...itens[0] } : body;
-  if (['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO'].includes(tipo) && quantidade > 1) {
+  if (['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO'].includes(tipo)) {
     if (itens.length !== quantidade) {
       const campos = tipo === 'BATERIA' ? 'numero_serie e data_validade' : tipo === 'MOTOR_CONTROLADOR' ? 'numero_serie e lote' : 'identificador_unico';
       return `Informe ${campos} para cada um dos ${quantidade} itens.`;
     }
+    const identificadores = itens.map((item) => tipo === 'VEICULO' ? String(item.identificador_unico).trim() : String(item.numero_serie).trim());
+    if (new Set(identificadores).size !== identificadores.length) return 'Os identificadores de rastreabilidade não podem se repetir na mesma entrada.';
     for (const item of itens) {
       if (tipo === 'BATERIA' && (!item.numero_serie || !item.data_validade)) return 'Para baterias, cada item exige numero_serie e data_validade.';
       if (tipo === 'MOTOR_CONTROLADOR' && (!item.numero_serie || !item.lote)) return 'Para motores e controladores, cada item exige numero_serie e lote.';
@@ -68,7 +70,8 @@ function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numero
   fornecedorId=fornecedorId||body.fornecedor_id;
   if(!repositorioFornecedor.buscarFornecedorPorId(fornecedorId))return erro(400,'Fornecedor informado não existe.');
   const n=Number(quantidade), novo=Number(produto.estoque_atual)+n, agora=new Date().toISOString();
-  const mov = executarEmTransacao(() => {
+  let mov;
+  try { mov = executarEmTransacao(() => {
     repositorioProduto.atualizarEstoqueProduto(produtoId,novo);
     const movimentacao=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'ENTRADA',quantidade:n,data_movimentacao:agora,numero_nota_fiscal:numeroNotaFiscal,numero_pedido:payload.numero_pedido_compra,fornecedor_id:fornecedorId,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao||produto.localizacao_deposito,observacao:body.observacao,estoque_anterior:produto.estoque_atual,estoque_novo:novo});
     const tipo=tipoRastreabilidade(produto);
@@ -78,7 +81,10 @@ function registrarEntrada(produtoId, quantidade, fornecedorId, usuarioId, numero
       for (const item of itens) repositorioEstoque.adicionarRastreabilidade({produto_id:Number(produtoId),movimentacao_id:movimentacao.id,tipo,numero_serie:item.numero_serie||null,lote:item.lote||null,data_validade:item.data_validade||null,identificador_unico:item.identificador_unico||null,localizacao:item.localizacao||body.localizacao||produto.localizacao_deposito});
     }
     return movimentacao;
-  });
+  }); } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return erro(409, 'Número de série ou identificador único já cadastrado.');
+    throw error;
+  }
   if(estoqueBaixo(produto, novo)) repositorioEstoque.adicionarAlerta({produto_id:produto.id,mensagem:`Estoque baixo para ${produto.nome}`});
   return sucesso(201,'Entrada registrada com sucesso.',{movimentacao_id:mov.id,produto_id:Number(produtoId),quantidade_adicionada:n,novo_estoque_total:novo});
 }
@@ -88,15 +94,26 @@ function registrarSaida(produtoId,quantidade,destinatario,motivo,usuarioId,body=
   let e=quantidadePositiva(quantidade)||obrigatorio(destinatario,'destinatario')||obrigatorio(motivo,'motivo')||obrigatorio(body.numero_pedido_venda,'numero_pedido_venda');if(e)return erro(400,e);
   const n=Number(quantidade);if(n>p.estoque_atual)return erro(400,'Estoque insuficiente para a quantidade solicitada.');
   const novo=p.estoque_atual-n, agora=new Date().toISOString();
-  const disponiveis = repositorioEstoque.listarRastreabilidade(produtoId).filter(x=>x.status==='EM_ESTOQUE');
+  const tipo = tipoRastreabilidade(p);
+  const disponiveis = repositorioEstoque.listarRastreabilidade(produtoId).filter((item) => item.status === 'EM_ESTOQUE');
   const idsSolicitados = Array.isArray(body.rastreabilidade_ids) ? body.rastreabilidade_ids.map(Number) : [];
-  const rast = idsSolicitados.length ? disponiveis.filter((item) => idsSolicitados.includes(Number(item.id))) : disponiveis.slice(0,n);
-  if (tipoRastreabilidade(p) !== 'NENHUMA' && (idsSolicitados.length !== n || rast.length !== n)) return erro(400, `Selecione exatamente ${n} item(ns) de rastreabilidade disponíveis.`);
+  let rast;
+  if (idsSolicitados.length) {
+    rast = disponiveis.filter((item) => idsSolicitados.includes(Number(item.id)));
+    if (tipo !== 'NENHUMA' && (idsSolicitados.length !== n || rast.length !== n)) return erro(400, `Selecione exatamente ${n} item(ns) de rastreabilidade disponíveis.`);
+  } else {
+    rast = [...disponiveis].sort((a, b) => {
+      const validadeA = a.data_validade ? new Date(a.data_validade).getTime() : Number.POSITIVE_INFINITY;
+      const validadeB = b.data_validade ? new Date(b.data_validade).getTime() : Number.POSITIVE_INFINITY;
+      return validadeA - validadeB || Number(a.id) - Number(b.id);
+    }).slice(0, n);
+    if (tipo !== 'NENHUMA' && rast.length !== n) return erro(400, `Não há ${n} item(ns) de rastreabilidade disponível(is).`);
+  }
   const mov = executarEmTransacao(() => {
     repositorioProduto.atualizarEstoqueProduto(produtoId,novo);
-    const movimentacao=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'SAIDA',quantidade:n,data_movimentacao:agora,numero_pedido_venda:body.numero_pedido_venda,destinatario,motivo,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao,observacao:body.observacao,estoque_anterior:p.estoque_atual,estoque_novo:novo});
+    const mov=repositorioEstoque.adicionarMovimentacao({produto_id:Number(produtoId),usuario_id:usuarioId,tipo:'SAIDA',quantidade:n,data_movimentacao:agora,numero_pedido_venda:body.numero_pedido_venda,destinatario,motivo,tipo_transporte:body.tipo_transporte,montado_desmontado:body.montado_desmontado,localizacao:body.localizacao,observacao:body.observacao,estoque_anterior:p.estoque_atual,estoque_novo:novo});
     for(const r of rast) db.prepare('UPDATE rastreabilidade SET status=\'SAIDA\' WHERE id=?').run(r.id);
-    return movimentacao;
+    return mov;
   });
   const alerta=estoqueBaixo(p, novo);if(alerta){repositorioEstoque.adicionarAlerta({produto_id:p.id,mensagem:`Estoque baixo para ${p.nome}`});for(const setor of ['COMPRAS','LOGISTICA'])repositorioEstoque.adicionarNotificacao({setor,titulo:'Estoque baixo',mensagem:`${p.nome} atingiu o limite de ${p.estoque_minimo} itens.`,produto_id:p.id});}
   return sucesso(201,'Saída de estoque registrada com sucesso.',{movimentacao_id:mov.id,novo_estoque_total:novo,alerta_gerado:alerta});

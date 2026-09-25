@@ -128,3 +128,23 @@ test('devolução rastreável exige itens e atualiza status', () => {
   assert.equal(resultado.statusCode, 201);
   assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(rastreabilidade.id).status, 'EM_ESTOQUE');
 });
+
+test('saída sem IDs usa FEFO para itens com validade', () => {
+  const db = conexaoBanco.getDb();
+  db.prepare("UPDATE produtos SET tipo_rastreabilidade = 'BATERIA', estoque_atual = 2 WHERE id = 2").run();
+  const antiga = repositorioEstoque.adicionarRastreabilidade({
+    produto_id: 2, movimentacao_id: null, tipo: 'BATERIA', numero_serie: 'FEFO-ANTIGA',
+    data_validade: '2026-10-01'
+  });
+  const nova = repositorioEstoque.adicionarRastreabilidade({
+    produto_id: 2, movimentacao_id: null, tipo: 'BATERIA', numero_serie: 'FEFO-NOVA',
+    data_validade: '2027-10-01'
+  });
+
+  const resultado = servicoEstoque.registrarSaida(2, 1, 'Cliente', 'Venda', 1, {
+    numero_pedido_venda: 'PV-FEFO'
+  });
+  assert.equal(resultado.statusCode, 201);
+  assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(antiga.id).status, 'SAIDA');
+  assert.equal(db.prepare('SELECT status FROM rastreabilidade WHERE id = ?').get(nova.id).status, 'EM_ESTOQUE');
+});
