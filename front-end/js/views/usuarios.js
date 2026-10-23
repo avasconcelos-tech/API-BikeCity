@@ -19,7 +19,13 @@ const $ = (id) => document.getElementById(id),
   modal = $('modal-usuario');
 let usuarioEmEdicao = null;
 async function carregar() {
-  const r = await getUsuarios(true);
+  let r;
+  try {
+    r = await getUsuarios(true);
+  } catch (erro) {
+    mostrarToast(erro.message || 'Não foi possível carregar os usuários.', 'erro');
+    return;
+  }
   $('tbody').innerHTML = (r.dados || [])
     .map(
       (u) =>

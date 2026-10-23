@@ -40,6 +40,8 @@ O BikeCity organiza esses processos em uma solução única, oferecendo rastreab
 - Ajustes manuais de estoque com controle de permissão;
 - Acesso em rede local para múltiplos usuários.
 
+Produtos cadastrados começam com estoque zero. As alterações de saldo devem ser registradas pelos fluxos de entrada, saída, devolução ou ajuste manual, para manter o histórico de movimentações.
+
 ## Arquitetura do sistema
 
 A estrutura do projeto está dividida em camadas:

@@ -31,7 +31,7 @@ export async function apiFetch(endpoint, options = {}) {
   try {
     dados = texto ? JSON.parse(texto) : {};
   } catch {
-    dados = {};
+    if (resposta.ok) throw new Error('A API retornou uma resposta inválida.');
   }
 
   if (resposta.status === 401 && token && !endpoint.includes('/auth/login')) {

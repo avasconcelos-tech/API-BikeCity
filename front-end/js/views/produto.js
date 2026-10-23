@@ -181,12 +181,20 @@ $('mostrar-inativos').addEventListener('change', carregarProdutos);
 $('btn-novo-produto').hidden = !podeEditar;
 $('th-acao-produto').hidden = !podeEditar;
 $('btn-novo-produto').addEventListener('click', async () => {
-  await carregarFornecedores();
-  abrirProduto();
+  try {
+    await carregarFornecedores();
+    abrirProduto();
+  } catch (erro) {
+    mostrarToast(erro.message || 'Não foi possível carregar os fornecedores.', 'erro');
+  }
 });
 $('btn-fechar-modal').addEventListener('click', fecharProduto);
 associarLabels(modal);
 configurarModal(modal, fecharProduto);
 
 if (!podeEditar) $('btn-novo-produto').hidden = true;
-carregarFornecedores().then(carregarProdutos);
+carregarFornecedores()
+  .then(carregarProdutos)
+  .catch((erro) =>
+    mostrarToast(erro.message || 'Não foi possível carregar os fornecedores.', 'erro'),
+  );

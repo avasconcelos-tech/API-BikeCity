@@ -8,6 +8,15 @@ const executarEmTransacao = conexaoBanco.executarEmTransacao;
 function erro(codigo, mensagem) {
   throw new ErroNegocio(codigo, mensagem);
 }
+async function bloquearProdutoSemConflito(produtoLido) {
+  const produto = await repositorioProduto.buscarProdutoPorIdParaAtualizacao(produtoLido.id);
+  if (!produto) return erro(404, 'Produto não encontrado.');
+  if (!produto.ativo) return erro(400, 'Produto inativo');
+  if (Number(produto.estoque_atual) !== Number(produtoLido.estoque_atual)) {
+    return erro(409, 'O estoque foi alterado em outra operação. Atualize os dados e tente novamente.');
+  }
+  return produto;
+}
 function sucesso(codigo, mensagem, dados) {
   return dados;
 }
@@ -17,6 +26,12 @@ function obrigatorio(v, campo) {
     : null;
 }
 function quantidadePositiva(v, c = 'quantidade') {
+  if (
+    (typeof v !== 'number' && typeof v !== 'string') ||
+    (typeof v === 'string' && !v.trim())
+  ) {
+    return `${c} deve ser um número inteiro maior que zero.`;
+  }
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? null : `${c} deve ser um número inteiro maior que zero.`;
 }
@@ -36,8 +51,18 @@ function tipoRastreabilidade(produto) {
 function validarRastreabilidade(produto, body = {}) {
   const tipo = tipoRastreabilidade(produto);
   const itens = Array.isArray(body.itens_rastreaveis) ? body.itens_rastreaveis : [];
+  if (itens.some((item) => !item || typeof item !== 'object' || Array.isArray(item))) {
+    return 'Cada item de rastreabilidade deve ser um objeto válido.';
+  }
   const quantidade = Number(body.quantidade || 1);
   const dadosItem = quantidade === 1 && itens.length ? { ...body, ...itens[0] } : body;
+  if (
+    itens.length &&
+    ['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO'].includes(tipo) &&
+    itens.length !== quantidade
+  ) {
+    return `Informe exatamente ${quantidade} item(ns) de rastreabilidade.`;
+  }
   if (['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO'].includes(tipo) && quantidade > 1) {
     if (itens.length !== quantidade) {
       const campos =
@@ -56,26 +81,32 @@ function validarRastreabilidade(produto, body = {}) {
     if (new Set(identificadores).size !== identificadores.length)
       return 'Os identificadores de rastreabilidade não podem se repetir na mesma entrada.';
     for (const item of itens) {
-      if (tipo === 'BATERIA' && (!item.numero_serie || !item.data_validade))
+      if (
+        tipo === 'BATERIA' &&
+        (!String(item.numero_serie || '').trim() || !String(item.data_validade || '').trim())
+      )
         return 'Para baterias, cada item exige numero_serie e data_validade.';
-      if (tipo === 'MOTOR_CONTROLADOR' && (!item.numero_serie || !item.lote))
+      if (
+        tipo === 'MOTOR_CONTROLADOR' &&
+        (!String(item.numero_serie || '').trim() || !String(item.lote || '').trim())
+      )
         return 'Para motores e controladores, cada item exige numero_serie e lote.';
-      if (tipo === 'VEICULO' && !item.identificador_unico)
+      if (tipo === 'VEICULO' && !String(item.identificador_unico || '').trim())
         return 'Para cada veículo, informe o ID único de rastreabilidade.';
     }
     return null;
   }
   if (tipo === 'BATERIA') {
-    if (!dadosItem.numero_serie || !dadosItem.data_validade)
+    if (!String(dadosItem.numero_serie || '').trim() || !String(dadosItem.data_validade || '').trim())
       return 'Para baterias, é obrigatório informar numero_serie e data_validade.';
   } else if (tipo === 'MOTOR_CONTROLADOR') {
-    if (!dadosItem.numero_serie || !dadosItem.lote)
+    if (!String(dadosItem.numero_serie || '').trim() || !String(dadosItem.lote || '').trim())
       return 'Para motores e controladores, é obrigatório informar numero_serie e lote.';
   } else if (tipo === 'VEICULO') {
-    if (!dadosItem.identificador_unico)
+    if (!String(dadosItem.identificador_unico || '').trim())
       return 'Para bicicletas e patinetes, é obrigatório informar o ID único de rastreabilidade.';
   } else if (tipo === 'PECA_SEGURANCA') {
-    if (!dadosItem.lote)
+    if (!String(dadosItem.lote || '').trim())
       return 'Para peças de segurança (freios e pneus), é obrigatório informar o lote.';
   }
   return null;
@@ -171,8 +202,12 @@ async function registrarEntrada(
     novo = Number(produto.estoque_atual) + n,
     agora = new Date().toISOString();
   let mov;
+  let produtoMovimentado;
   try {
     mov = await executarEmTransacao(async () => {
+      produtoMovimentado = await bloquearProdutoSemConflito(produto);
+      const validacaoAtual = validarEntrada(produtoMovimentado, payload);
+      if (validacaoAtual) return erro(400, validacaoAtual);
       await repositorioProduto.atualizarEstoqueProduto(produtoId, novo);
       const movimentacao = await repositorioEstoque.adicionarMovimentacao({
         produto_id: Number(produtoId),
@@ -185,20 +220,20 @@ async function registrarEntrada(
         fornecedor_id: fornecedorId,
         tipo_transporte: body.tipo_transporte,
         montado_desmontado: body.montado_desmontado,
-        localizacao: body.localizacao || produto.localizacao_deposito,
+        localizacao: body.localizacao || produtoMovimentado.localizacao_deposito,
         observacao: body.observacao,
-        estoque_anterior: produto.estoque_atual,
+        estoque_anterior: produtoMovimentado.estoque_atual,
         estoque_novo: novo,
       });
-      const tipo = tipoRastreabilidade(produto);
+      const tipo = tipoRastreabilidade(produtoMovimentado);
       if (tipo !== 'NENHUMA') {
         const origemItens = itensRastreaveis.length ? itensRastreaveis : [body];
         const itens =
           tipo === 'PECA_SEGURANCA' && origemItens.length === 1
             ? Array.from({ length: n }, () => origemItens[0])
             : origemItens;
-        for (const item of itens)
-          await repositorioEstoque.adicionarRastreabilidade({
+        for (const item of itens) {
+          const rastreabilidade = await repositorioEstoque.adicionarRastreabilidade({
             produto_id: Number(produtoId),
             movimentacao_id: movimentacao.id,
             tipo,
@@ -206,8 +241,13 @@ async function registrarEntrada(
             lote: item.lote || null,
             data_validade: item.data_validade || null,
             identificador_unico: item.identificador_unico || null,
-            localizacao: item.localizacao || body.localizacao || produto.localizacao_deposito,
+            localizacao:
+              item.localizacao || body.localizacao || produtoMovimentado.localizacao_deposito,
           });
+          await repositorioEstoque.registrarTransicoesRastreabilidade(movimentacao.id, [
+            { id: rastreabilidade.id, status_anterior: null, status_novo: 'EM_ESTOQUE' },
+          ]);
+        }
       }
       return movimentacao;
     });
@@ -216,7 +256,7 @@ async function registrarEntrada(
       return erro(409, 'Número de série ou identificador único já cadastrado.');
     throw error;
   }
-  await verificarEstoqueMinimo({ ...produto, estoque_atual: novo });
+  await verificarEstoqueMinimo({ ...produtoMovimentado, estoque_atual: novo });
   return sucesso(201, 'Entrada registrada com sucesso.', {
     movimentacao_id: mov.id,
     produto_id: Number(produtoId),
@@ -274,6 +314,7 @@ async function registrarSaida(produtoId, quantidade, destinatario, motivo, usuar
       return erro(400, `Não há ${quantidadeNumerica} item(ns) de rastreabilidade disponível(is).`);
   }
   const movimentacao = await executarEmTransacao(async () => {
+    const produtoMovimentado = await bloquearProdutoSemConflito(produto);
     await repositorioProduto.atualizarEstoqueProduto(produtoId, novoEstoque);
     const registro = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(produtoId),
@@ -288,12 +329,24 @@ async function registrarSaida(produtoId, quantidade, destinatario, motivo, usuar
       montado_desmontado: body.montado_desmontado,
       localizacao: body.localizacao,
       observacao: body.observacao,
-      estoque_anterior: produto.estoque_atual,
+      estoque_anterior: produtoMovimentado.estoque_atual,
       estoque_novo: novoEstoque,
     });
-    await repositorioEstoque.atualizarStatusRastreabilidadePorIds(
+    const rastreabilidadeAtualizada = await repositorioEstoque.atualizarStatusRastreabilidadePorIds(
       rast.map((item) => item.id),
       'SAIDA',
+      'EM_ESTOQUE',
+    );
+    if (tipo !== 'NENHUMA' && rastreabilidadeAtualizada !== rast.length) {
+      return erro(409, 'A rastreabilidade foi alterada em outra operação. Atualize e tente novamente.');
+    }
+    await repositorioEstoque.registrarTransicoesRastreabilidade(
+      registro.id,
+      rast.map((item) => ({
+        id: item.id,
+        status_anterior: 'EM_ESTOQUE',
+        status_novo: 'SAIDA',
+      })),
     );
     return registro;
   });
@@ -309,13 +362,19 @@ async function registrarAjusteManual(produtoId, novaQuantidade, justificativa, u
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
   const quantidadeNova = Number(novaQuantidade);
-  if (!Number.isInteger(quantidadeNova) || quantidadeNova < 0)
+  if (
+    (typeof novaQuantidade !== 'number' && typeof novaQuantidade !== 'string') ||
+    (typeof novaQuantidade === 'string' && !novaQuantidade.trim()) ||
+    !Number.isInteger(quantidadeNova) ||
+    quantidadeNova < 0
+  )
     return erro(400, 'nova_quantidade deve ser um número inteiro maior ou igual a 0.');
   if (!justificativa || !String(justificativa).trim())
     return erro(400, 'justificativa é obrigatória.');
   const estoqueAnterior = produto.estoque_atual;
   const data = new Date().toISOString();
   const movimentacao = await executarEmTransacao(async () => {
+    const produtoMovimentado = await bloquearProdutoSemConflito(produto);
     await repositorioProduto.atualizarEstoqueProduto(produtoId, quantidadeNova);
     const registro = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(produtoId),
@@ -325,7 +384,7 @@ async function registrarAjusteManual(produtoId, novaQuantidade, justificativa, u
       data_movimentacao: data,
       motivo: String(justificativa).trim(),
       observacao: `Estoque anterior: ${estoqueAnterior}; novo estoque: ${quantidadeNova}`,
-      estoque_anterior: estoqueAnterior,
+      estoque_anterior: produtoMovimentado.estoque_atual,
       estoque_novo: quantidadeNova,
     });
     await repositorioEstoque.adicionarAuditoria({
@@ -353,6 +412,9 @@ async function registrarAjusteManual(produtoId, novaQuantidade, justificativa, u
   });
 }
 async function registrarDevolucao(d, usuarioId) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return erro(400, 'Os dados da devolução devem ser um objeto.');
+  }
   const produto = await repositorioProduto.buscarProdutoPorId(d.produto_id);
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
@@ -373,12 +435,16 @@ async function registrarDevolucao(d, usuarioId) {
   const n = Number(d.quantidade),
     tipo = tipoRastreabilidade(produto),
     ids = Array.isArray(d.rastreabilidade_ids) ? d.rastreabilidade_ids.map(Number) : [],
+    statusRastreabilidade = d.origem === 'CLIENTE' ? 'SAIDA' : 'EM_ESTOQUE',
     rast =
       tipo === 'NENHUMA'
         ? []
         : (await repositorioEstoque
             .listarRastreabilidade(produto.id))
-            .filter((item) => item.status === 'EM_ESTOQUE' && ids.includes(Number(item.id)));
+            .filter(
+              (item) =>
+                item.status === statusRastreabilidade && ids.includes(Number(item.id)),
+            );
   if (tipo !== 'NENHUMA' && (ids.length !== n || rast.length !== n))
     return erro(
       400,
@@ -390,6 +456,7 @@ async function registrarDevolucao(d, usuarioId) {
   const delta = d.origem === 'PARA_FORNECEDOR' ? -n : reap ? n : 0;
   const novoEstoque = Number(produto.estoque_atual) + delta;
   const { devolucao: dev, movimentacao: mov } = await executarEmTransacao(async () => {
+    const produtoMovimentado = await bloquearProdutoSemConflito(produto);
     const agora = new Date().toISOString();
     const devolucao = await repositorioEstoque.adicionarDevolucao({
       ...d,
@@ -407,7 +474,7 @@ async function registrarDevolucao(d, usuarioId) {
       numero_pedido_venda: d.numero_pedido_venda,
       motivo: d.motivo,
       observacao: `Origem: ${d.origem}; Estado: ${d.estado_produto}`,
-      estoque_anterior: produto.estoque_atual,
+      estoque_anterior: produtoMovimentado.estoque_atual,
       estoque_novo: novoEstoque,
     });
     const status =
@@ -416,9 +483,21 @@ async function registrarDevolucao(d, usuarioId) {
         : d.origem === 'PARA_FORNECEDOR'
           ? 'SAIDA'
           : 'EM_ESTOQUE';
-    await repositorioEstoque.atualizarStatusRastreabilidadePorIds(
+    const rastreabilidadeAtualizada = await repositorioEstoque.atualizarStatusRastreabilidadePorIds(
       rast.map((item) => item.id),
       status,
+      statusRastreabilidade,
+    );
+    if (tipo !== 'NENHUMA' && rastreabilidadeAtualizada !== rast.length) {
+      return erro(409, 'A rastreabilidade foi alterada em outra operação. Atualize e tente novamente.');
+    }
+    await repositorioEstoque.registrarTransicoesRastreabilidade(
+      movimentacao.id,
+      rast.map((item) => ({
+        id: item.id,
+        status_anterior: statusRastreabilidade,
+        status_novo: status,
+      })),
     );
     return { devolucao, movimentacao };
   });
@@ -431,21 +510,28 @@ async function registrarDevolucao(d, usuarioId) {
   });
 }
 async function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
-  const origem = await repositorioEstoque.buscarMovimentacaoPorId(movimentacaoId);
-
-  if (!origem) return erro(404, 'Movimentação de origem não encontrada.');
-  if (origem.tipo === 'ESTORNO')
-    return erro(400, 'Não é possível estornar uma movimentação de estorno.');
   if (!motivo || !String(motivo).trim()) return erro(400, 'motivo é obrigatório para o estorno.');
 
-  const produto = await repositorioProduto.buscarProdutoPorId(origem.produto_id);
-  if (!produto) return erro(404, 'Produto da movimentação não encontrado.');
+  const resultado = await executarEmTransacao(async () => {
+    const origem = await repositorioEstoque.buscarMovimentacaoPorIdParaAtualizacao(
+      movimentacaoId,
+    );
+    if (!origem) return erro(404, 'Movimentação de origem não encontrada.');
+    if (origem.tipo === 'ESTORNO')
+      return erro(400, 'Não é possível estornar uma movimentação de estorno.');
+    if (await repositorioEstoque.buscarEstornoPorOrigem(origem.id)) {
+      return erro(409, 'Esta movimentação já foi estornada.');
+    }
 
-  const deltaOriginal = Number(origem.quantidade || 0);
-  const reversao = -deltaOriginal;
-  const novoEstoque = Number(produto.estoque_atual) + reversao;
+    const produto = await repositorioProduto.buscarProdutoPorIdParaAtualizacao(origem.produto_id);
+    if (!produto) return erro(404, 'Produto da movimentação não encontrado.');
 
-  const estorno = await executarEmTransacao(async () => {
+    const deltaOriginal = Number(origem.quantidade || 0);
+    const novoEstoque = Number(produto.estoque_atual) - deltaOriginal;
+    if (novoEstoque < 0) {
+      return erro(409, 'O saldo atual não permite estornar esta movimentação.');
+    }
+
     await repositorioProduto.atualizarEstoqueProduto(origem.produto_id, novoEstoque);
     const movimentacao = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(origem.produto_id),
@@ -468,10 +554,22 @@ async function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = 
       movimentacao_origem_id: Number(origem.id),
     });
 
-    await repositorioEstoque.atualizarStatusRastreabilidadePorMovimentacao(origem.id, 'EM_ESTOQUE');
-    return movimentacao;
+    const resultadoRastreabilidade =
+      await repositorioEstoque.reverterTransicoesRastreabilidade(origem.id, movimentacao.id);
+    if (!resultadoRastreabilidade.revertida) {
+      return erro(409, 'Não é possível estornar: a rastreabilidade já foi movimentada.');
+    }
+    if (
+      tipoRastreabilidade(produto) !== 'NENHUMA' &&
+      ['SAIDA', 'DEVOLUCAO'].includes(origem.tipo) &&
+      !resultadoRastreabilidade.encontrada
+    ) {
+      return erro(409, 'Não é possível estornar esta movimentação rastreável sem seu histórico de itens.');
+    }
+    return { movimentacao, produto, origem, deltaOriginal, novoEstoque };
   });
 
+  const { movimentacao: estorno, produto, origem, deltaOriginal, novoEstoque } = resultado;
   await verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
   return sucesso(201, 'Estorno registrado com sucesso.', {
     movimentacao_id: estorno.id,

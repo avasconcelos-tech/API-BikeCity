@@ -1,10 +1,21 @@
 import { checarAutenticacao, obterUsuarioLogado } from '../utilitarios/auth.js';
 import { apiFetch } from '../api/client.js';
-import { getAlertas, getNotificacoes, getProdutos, marcarAlertaLido } from '../api/services.js';
+import {
+  getAlertas,
+  getNotificacoes,
+  getProdutos,
+  marcarAlertaLido,
+  marcarNotificacaoLida,
+} from '../api/services.js';
 import { formatarMoeda } from '../utilitarios/formatters.js';
 import { estaEmAlerta } from '../utilitarios/estoque.js';
 import { escaparHtml } from '../utilitarios/html.js';
-import { configurarModal, abrirModal, fecharModal } from '../utilitarios/ui.js';
+import {
+  configurarModal,
+  abrirModal,
+  fecharModal,
+  mostrarToast,
+} from '../utilitarios/ui.js';
 
 if (!checarAutenticacao()) throw new Error('Não autenticado');
 
@@ -66,6 +77,7 @@ function renderizarAlertas(alertas, notificacoes) {
       lido: alerta.lido,
     })),
     ...notificacoes.map((notificacao) => ({
+      id: notificacao.id,
       tipo: 'notificacao',
       titulo: notificacao.titulo,
       mensagem: notificacao.mensagem,
@@ -79,27 +91,30 @@ function renderizarAlertas(alertas, notificacoes) {
     itens
       .map(
         (item) =>
-          `<article class="notification-item ${item.lido ? 'is-read' : ''}"><div><strong>${escaparHtml(item.titulo)}</strong><p>${escaparHtml(item.mensagem)}</p></div>${item.tipo === 'alerta' && !item.lido ? `<button type="button" class="btn-marcar-alerta" data-id="${escaparHtml(item.id)}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`,
+          `<article class="notification-item ${item.lido ? 'is-read' : ''}"><div><strong>${escaparHtml(item.titulo)}</strong><p>${escaparHtml(item.mensagem)}</p></div>${!item.lido ? `<button type="button" class="btn-marcar-alerta" data-id="${escaparHtml(item.id)}" data-tipo="${item.tipo}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`,
       )
       .join('') || '<p>Nenhuma notificação registrada.</p>';
   lista.querySelectorAll('.btn-marcar-alerta').forEach((botao) =>
     botao.addEventListener('click', async () => {
       botao.disabled = true;
       try {
-        await marcarAlertaLido(botao.dataset.id);
-        const alerta = alertas.find((item) => String(item.id) === botao.dataset.id);
-        if (alerta) alerta.lido = true;
+        const registros = botao.dataset.tipo === 'alerta' ? alertas : notificacoes;
+        if (botao.dataset.tipo === 'alerta') await marcarAlertaLido(botao.dataset.id);
+        else await marcarNotificacaoLida(botao.dataset.id);
+        const registro = registros.find((item) => String(item.id) === botao.dataset.id);
+        if (registro) {
+          if (botao.dataset.tipo === 'alerta') registro.lido = true;
+          else registro.lida = true;
+        }
         renderizarAlertas(alertas, notificacoes);
       } catch (erro) {
-        botao.disabled = false;
-        console.error('Não foi possível marcar o alerta:', erro);
+        mostrarToast(erro.message || 'Não foi possível marcar como lido.', 'erro');
       }
     }),
   );
 }
 
 async function carregar() {
-  const usuario = obterUsuarioLogado();
   try {
     const [resumo, respostaProdutos, respostaAlertas, respostaNotificacoes] = await Promise.all([
       apiFetch('/api/v1/dashboard/resumo'),
@@ -122,7 +137,7 @@ async function carregar() {
     );
     ativarCard('card-valor-estoque', abrirRelatorioEstoque);
   } catch (erro) {
-    console.error('Não foi possível carregar o painel:', erro);
+    mostrarToast(erro.message || 'Não foi possível carregar o painel.', 'erro');
   }
 }
 

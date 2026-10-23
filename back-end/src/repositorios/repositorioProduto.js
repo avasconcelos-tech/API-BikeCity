@@ -23,7 +23,7 @@ async function criarProduto(produtoInput) {
       produtoInput.fornecedor_id ?? null,
       produtoInput.custo ?? 0,
       produtoInput.dimensoes ?? null,
-      produtoInput.estoque_atual ?? 0,
+      0,
       produtoInput.estoque_minimo ?? 5,
       produtoInput.estado_montagem ?? 'NAO_APLICA',
       produtoInput.ativo === undefined ? 1 : Number(Boolean(produtoInput.ativo)),
@@ -36,6 +36,13 @@ async function criarProduto(produtoInput) {
 
 async function buscarProdutoPorId(id) {
   const [produto] = await banco.consultar('SELECT * FROM produtos WHERE id = ?', [Number(id)]);
+  return mapearProduto(produto);
+}
+
+async function buscarProdutoPorIdParaAtualizacao(id) {
+  const [produto] = await banco.consultar('SELECT * FROM produtos WHERE id = ? FOR UPDATE', [
+    Number(id),
+  ]);
   return mapearProduto(produto);
 }
 
@@ -100,6 +107,7 @@ module.exports = {
   listarProdutos,
   criarProduto,
   buscarProdutoPorId,
+  buscarProdutoPorIdParaAtualizacao,
   buscarPorCodigo,
   atualizarProduto,
   inativarProduto,

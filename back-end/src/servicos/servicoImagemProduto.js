@@ -39,19 +39,16 @@ function obterCaminhoImagemLocal(urlImagem) {
 }
 
 async function vincularImagem(produtoId, arquivo) {
-  if (!Number.isInteger(Number(produtoId)) || Number(produtoId) < 1) {
-    await removerArquivo(arquivo?.path);
-    throw new ErroNegocio(400, 'produto_id é obrigatório para vincular a imagem.');
-  }
   if (!arquivo) throw new ErroNegocio(400, 'Nenhuma imagem enviada.');
 
-  const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
-  if (!produto) {
-    await removerArquivo(arquivo.path);
-    throw new ErroNegocio(404, 'Produto não encontrado.');
-  }
-
   try {
+    if (!Number.isInteger(Number(produtoId)) || Number(produtoId) < 1) {
+      throw new ErroNegocio(400, 'produto_id é obrigatório para vincular a imagem.');
+    }
+
+    const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
+    if (!produto) throw new ErroNegocio(404, 'Produto não encontrado.');
+
     const { fileTypeFromBuffer } = await import('file-type');
     const dadosArquivo = await fs.promises.readFile(arquivo.path);
     const tipoArquivo = await fileTypeFromBuffer(dadosArquivo);
@@ -77,7 +74,11 @@ async function vincularImagem(produtoId, arquivo) {
       caminho: caminhoImagem,
     };
   } catch (erro) {
-    await removerArquivo(arquivo.path).catch(() => {});
+    try {
+      await removerArquivo(arquivo.path);
+    } catch (erroRemocao) {
+      console.error('Não foi possível remover o upload inválido:', erroRemocao);
+    }
     throw erro;
   }
 }

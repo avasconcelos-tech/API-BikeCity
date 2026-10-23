@@ -132,32 +132,35 @@ async function carregarRastreabilidadeSaida() {
     box.innerHTML = '';
     return;
   }
-  async function carregarRastreabilidadeDevolucao() {
-    const produto = pSelecionado('produto-devolucao');
-    const box = $('rastreio-devolucao');
-    if (!box) return;
-    if (!produto) {
-      box.innerHTML = '';
-      return;
-    }
-    const tipo = tipoRastreabilidade(produto);
-    if (!['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA'].includes(tipo)) {
-      box.innerHTML = '';
-      return;
-    }
-    try {
-      const resposta = await getRastreabilidade(produto.id);
-      const itens = (resposta.dados || []).filter((item) => item.status === 'EM_ESTOQUE');
-      box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis devolvidos</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_devolucao" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
-      const quantidade = Number($('qtd-devolucao').value || 1);
-      box.querySelectorAll('input').forEach((input) =>
-        input.addEventListener('change', () => {
-          if (box.querySelectorAll('input:checked').length > quantidade) input.checked = false;
-        }),
-      );
-    } catch (erro) {
-      box.innerHTML = `<p class="form-error">${escaparHtml(erro.message || 'Não foi possível carregar os itens rastreáveis.')}</p>`;
-    }
+  const tipo = tipoRastreabilidade(produto);
+  if (!['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA'].includes(tipo)) {
+    box.innerHTML = '';
+    return;
+  }
+  try {
+    const resposta = await getRastreabilidade(produto.id);
+    const statusEsperado =
+      $('origem-devolucao').value === 'CLIENTE' ? 'SAIDA' : 'EM_ESTOQUE';
+    const itens = (resposta.dados || []).filter((item) => item.status === statusEsperado);
+    box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis disponíveis</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_saida" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)} · ${escaparHtml(item.status)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
+    const quantidade = Number($('qtd-saida').value || 1);
+    box.querySelectorAll('input').forEach((input) =>
+      input.addEventListener('change', () => {
+        const selecionados = box.querySelectorAll('input:checked');
+        if (selecionados.length > quantidade) input.checked = false;
+      }),
+    );
+  } catch (erro) {
+    box.innerHTML = `<p class="form-error">${escaparHtml(erro.message || 'Não foi possível carregar os itens rastreáveis.')}</p>`;
+  }
+}
+async function carregarRastreabilidadeDevolucao() {
+  const produto = pSelecionado('produto-devolucao');
+  const box = $('rastreio-devolucao');
+  if (!box) return;
+  if (!produto) {
+    box.innerHTML = '';
+    return;
   }
   const tipo = tipoRastreabilidade(produto);
   if (!['BATERIA', 'MOTOR_CONTROLADOR', 'VEICULO', 'PECA_SEGURANCA'].includes(tipo)) {
@@ -167,12 +170,11 @@ async function carregarRastreabilidadeSaida() {
   try {
     const resposta = await getRastreabilidade(produto.id);
     const itens = (resposta.dados || []).filter((item) => item.status === 'EM_ESTOQUE');
-    box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis disponíveis</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_saida" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)} · ${escaparHtml(item.status)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
-    const quantidade = Number($('qtd-saida').value || 1);
+    box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis devolvidos</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_devolucao" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
+    const quantidade = Number($('qtd-devolucao').value || 1);
     box.querySelectorAll('input').forEach((input) =>
       input.addEventListener('change', () => {
-        const selecionados = box.querySelectorAll('input:checked');
-        if (selecionados.length > quantidade) input.checked = false;
+        if (box.querySelectorAll('input:checked').length > quantidade) input.checked = false;
       }),
     );
   } catch (erro) {
@@ -213,6 +215,7 @@ $('form-devolucao')?.addEventListener('submit', async (e) => {
 });
 $('origem-devolucao')?.addEventListener('change', (e) => {
   $('pedido-devolucao').required = e.target.value === 'CLIENTE';
+  carregarRastreabilidadeDevolucao();
 });
 $('pedido-devolucao').required = $('origem-devolucao')?.value === 'CLIENTE';
 $('form-ajuste')?.addEventListener('submit', async (e) => {
@@ -373,7 +376,9 @@ async function carregarFornecedores() {
     $('fornecedor-entrada').innerHTML = (r.dados || [])
       .map((f) => `<option value="${escaparHtml(f.id)}">${escaparHtml(f.nome)}</option>`)
       .join('');
-  } catch {}
+  } catch (erro) {
+    mostrarToast(erro.message || 'Não foi possível carregar os fornecedores.', 'erro');
+  }
 }
 const u = obterUsuarioLogado();
 if (u?.perfil !== 'GERENTE') document.querySelector('#secao-ajuste')?.remove();

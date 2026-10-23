@@ -7,7 +7,7 @@ test.after(async () => banco.fecharBanco());
 
 test('canonical MySQL schema is installed and versioned', async () => {
   const versions = await banco.consultar('SELECT versao FROM schema_versao ORDER BY versao');
-  assert.deepEqual(versions.map((row) => row.versao), [1]);
+  assert.deepEqual(versions.map((row) => row.versao), [1, 2]);
 
   const checks = await banco.consultar(
     `SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
@@ -22,6 +22,8 @@ test('canonical MySQL schema is installed and versioned', async () => {
     ['produtos', 'fornecedor_id', 'fornecedores'],
     ['rastreabilidade', 'produto_id', 'produtos'],
     ['rastreabilidade', 'movimentacao_id', 'movimentacoes'],
+    ['movimentacao_rastreabilidade', 'movimentacao_id', 'movimentacoes'],
+    ['movimentacao_rastreabilidade', 'rastreabilidade_id', 'rastreabilidade'],
   ]) {
     assert.ok(
       checks.some(

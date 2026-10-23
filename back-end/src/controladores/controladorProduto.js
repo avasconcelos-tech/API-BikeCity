@@ -27,8 +27,9 @@ async function atualizarProduto(req, res) {
     'demanda_prevista',
   ];
   const dados = {};
+  const body = req.body || {};
   for (const campo of permitidos)
-    if (Object.hasOwn(req.body, campo)) dados[campo] = req.body[campo];
+    if (Object.hasOwn(body, campo)) dados[campo] = body[campo];
   const produto = await servicoProduto.atualizarProduto(req.params.id, dados);
   return res.json({
     status: 'sucesso',
@@ -45,7 +46,7 @@ async function reativarProduto(req, res) {
   return res.json({ status: 'sucesso', mensagem: 'Produto reativado com sucesso', dados: produto });
 }
 async function criarProduto(req, res) {
-  const dados = await servicoProduto.criarProduto(req.body);
+  const dados = await servicoProduto.criarProduto(req.body || {});
   return res
     .status(201)
     .json({ status: 'sucesso', mensagem: 'Produto cadastrado com sucesso', dados });

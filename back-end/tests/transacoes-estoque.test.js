@@ -211,3 +211,31 @@ test('sales without selected identifiers use FEFO for items with expiration date
   assert.equal(await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [antiga.id]), 'SAIDA');
   assert.equal(await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [nova.id]), 'EM_ESTOQUE');
 });
+
+test('reversing a tracked sale restores its identifiers and cannot be repeated', async () => {
+  await conexaoBanco.executar(
+    "UPDATE produtos SET tipo_rastreabilidade = 'BATERIA', estoque_atual = 0 WHERE id = 2",
+  );
+  await servicoEstoque.registrarEntrada(2, 1, 1, 1, 'NF-ESTORNO', [], {
+    numero_pedido_compra: 'PC-ESTORNO',
+    numero_serie: 'SERIE-ESTORNO',
+    data_validade: '2027-01-01',
+  });
+  const saida = await servicoEstoque.registrarSaida(2, 1, 'Cliente', 'Venda', 1, {
+    numero_pedido_venda: 'PV-ESTORNO',
+  });
+
+  const estorno = await servicoEstoque.registrarEstorno(
+    saida.movimentacao_id,
+    1,
+    'Cancelamento da venda',
+  );
+
+  assert.equal(await scalar('SELECT estoque_atual FROM produtos WHERE id = 2'), 1);
+  assert.equal(await scalar('SELECT status FROM rastreabilidade WHERE numero_serie = ?', ['SERIE-ESTORNO']), 'EM_ESTOQUE');
+  assert.equal(estorno.movimentacao_origem_id, saida.movimentacao_id);
+  await assert.rejects(
+    servicoEstoque.registrarEstorno(saida.movimentacao_id, 1, 'Segundo cancelamento'),
+    (erro) => erro instanceof ErroNegocio && erro.status === 409,
+  );
+});

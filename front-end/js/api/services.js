@@ -113,3 +113,6 @@ export function getAlertas() {
 export function marcarAlertaLido(id) {
   return apiFetch(`/api/v1/estoque/alertas/${id}/lido`, { method: 'PATCH' });
 }
+export function marcarNotificacaoLida(id) {
+  return apiFetch(`/api/v1/estoque/notificacoes/${id}/lida`, { method: 'PATCH' });
+}

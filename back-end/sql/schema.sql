@@ -100,6 +100,18 @@ CREATE TABLE IF NOT EXISTS rastreabilidade (
   KEY idx_rastreabilidade_produto_status (produto_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS movimentacao_rastreabilidade (
+  movimentacao_id INT NOT NULL,
+  rastreabilidade_id INT NOT NULL,
+  status_anterior VARCHAR(40) NULL,
+  status_novo VARCHAR(40) NOT NULL,
+  PRIMARY KEY (movimentacao_id, rastreabilidade_id),
+  CONSTRAINT fk_movimentacao_rastreabilidade_movimentacao FOREIGN KEY (movimentacao_id)
+    REFERENCES movimentacoes(id) ON DELETE CASCADE,
+  CONSTRAINT fk_movimentacao_rastreabilidade_item FOREIGN KEY (rastreabilidade_id)
+    REFERENCES rastreabilidade(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS alertas (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   produto_id INT NOT NULL,
@@ -160,4 +172,8 @@ CREATE TABLE IF NOT EXISTS notificacoes (
 
 INSERT INTO schema_versao (versao, nome, aplicado_em)
 VALUES (1, '001_bikecity_mysql_baseline', CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE versao = VALUES(versao);
+
+INSERT INTO schema_versao (versao, nome, aplicado_em)
+VALUES (2, '002_movimentacao_rastreabilidade', CURRENT_TIMESTAMP)
 ON DUPLICATE KEY UPDATE versao = VALUES(versao);

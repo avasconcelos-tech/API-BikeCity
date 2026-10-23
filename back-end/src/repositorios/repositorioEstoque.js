@@ -39,8 +39,17 @@ async function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
      LEFT JOIN usuarios u ON u.id = m.usuario_id${where}`,
     params,
   );
-  const pagina = Number(page) > 0 ? Number(page) : 1;
-  const limite = Number(limit) > 0 ? Number(limit) : 20;
+  const paginaSolicitada = Number(page);
+  const limiteSolicitado = Number(limit);
+  const paginaValida =
+    Number.isSafeInteger(paginaSolicitada) && paginaSolicitada > 0 ? paginaSolicitada : 1;
+  const limite =
+    Number.isInteger(limiteSolicitado) && limiteSolicitado > 0
+      ? Math.min(limiteSolicitado, 100)
+      : 20;
+  const total = Number(contagem.total);
+  const totalPaginas = Math.max(1, Math.ceil(total / limite));
+  const pagina = Math.min(paginaValida, totalPaginas);
   const offset = (pagina - 1) * limite;
   const dados = await banco.consultar(
     `SELECT m.*, p.nome AS produto_nome, u.nome AS usuario_nome
@@ -55,8 +64,8 @@ async function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
     meta: {
       page: pagina,
       limit: limite,
-      total: Number(contagem.total),
-      total_pages: Math.max(1, Math.ceil(Number(contagem.total) / limite)),
+      total,
+      total_pages: totalPaginas,
     },
   };
 }
@@ -117,6 +126,24 @@ async function buscarMovimentacaoPorId(id) {
   return movimentacao || null;
 }
 
+async function buscarMovimentacaoPorIdParaAtualizacao(id) {
+  const [movimentacao] = await banco.consultar(
+    'SELECT * FROM movimentacoes WHERE id = ? FOR UPDATE',
+    [Number(id)],
+  );
+  return movimentacao || null;
+}
+
+async function buscarEstornoPorOrigem(movimentacaoId) {
+  const [estorno] = await banco.consultar(
+    `SELECT id FROM movimentacoes
+     WHERE movimentacao_origem_id = ? AND tipo = 'ESTORNO'
+     LIMIT 1`,
+    [Number(movimentacaoId)],
+  );
+  return estorno || null;
+}
+
 async function adicionarRastreabilidade(r) {
   const resultado = await banco.executar(
     `INSERT INTO rastreabilidade
@@ -147,12 +174,16 @@ async function listarRastreabilidade(produtoId = null) {
   );
 }
 
-async function atualizarStatusRastreabilidadePorIds(ids, status) {
+async function atualizarStatusRastreabilidadePorIds(ids, status, statusAtual = null) {
   if (!ids.length) return 0;
   const placeholders = ids.map(() => '?').join(', ');
+  const condicaoStatus = statusAtual ? ' AND status = ?' : '';
+  const parametros = statusAtual
+    ? [status, ...ids.map(Number), statusAtual]
+    : [status, ...ids.map(Number)];
   const resultado = await banco.executar(
-    `UPDATE rastreabilidade SET status = ? WHERE id IN (${placeholders})`,
-    [status, ...ids.map(Number)],
+    `UPDATE rastreabilidade SET status = ? WHERE id IN (${placeholders})${condicaoStatus}`,
+    parametros,
   );
   return resultado.affectedRows;
 }
@@ -163,6 +194,69 @@ async function atualizarStatusRastreabilidadePorMovimentacao(movimentacaoId, sta
     [status, Number(movimentacaoId), status],
   );
   return resultado.affectedRows;
+}
+
+async function registrarTransicoesRastreabilidade(movimentacaoId, transicoes) {
+  for (const transicao of transicoes) {
+    await banco.executar(
+      `INSERT INTO movimentacao_rastreabilidade
+       (movimentacao_id, rastreabilidade_id, status_anterior, status_novo)
+       VALUES (?, ?, ?, ?)`,
+      [
+        Number(movimentacaoId),
+        Number(transicao.id),
+        transicao.status_anterior ?? null,
+        transicao.status_novo,
+      ],
+    );
+  }
+}
+
+async function reverterTransicoesRastreabilidade(movimentacaoId, estornoId) {
+  const transicoes = await banco.consultar(
+    `SELECT rastreabilidade_id, status_anterior, status_novo
+     FROM movimentacao_rastreabilidade WHERE movimentacao_id = ?`,
+    [Number(movimentacaoId)],
+  );
+
+  if (!transicoes.length) {
+    const rastreabilidadeLegada = await banco.consultar(
+      'SELECT id, status FROM rastreabilidade WHERE movimentacao_id = ?',
+      [Number(movimentacaoId)],
+    );
+    if (!rastreabilidadeLegada.length) return { encontrada: false, revertida: true };
+    if (rastreabilidadeLegada.some((item) => item.status !== 'EM_ESTOQUE')) {
+      return { encontrada: true, revertida: false };
+    }
+    for (const item of rastreabilidadeLegada) {
+      const resultado = await banco.executar(
+        "UPDATE rastreabilidade SET status = 'ESTORNADO' WHERE id = ? AND status = 'EM_ESTOQUE'",
+        [Number(item.id)],
+      );
+      if (!resultado.affectedRows) return { encontrada: true, revertida: false };
+      await registrarTransicoesRastreabilidade(estornoId, [
+        { id: item.id, status_anterior: 'EM_ESTOQUE', status_novo: 'ESTORNADO' },
+      ]);
+    }
+    return { encontrada: true, revertida: true };
+  }
+
+  for (const transicao of transicoes) {
+    const statusRestaurado = transicao.status_anterior || 'ESTORNADO';
+    const resultado = await banco.executar(
+      'UPDATE rastreabilidade SET status = ? WHERE id = ? AND status = ?',
+      [statusRestaurado, Number(transicao.rastreabilidade_id), transicao.status_novo],
+    );
+    if (!resultado.affectedRows) return { encontrada: true, revertida: false };
+    await registrarTransicoesRastreabilidade(estornoId, [
+      {
+        id: transicao.rastreabilidade_id,
+        status_anterior: transicao.status_novo,
+        status_novo: statusRestaurado,
+      },
+    ]);
+  }
+  return { encontrada: true, revertida: true };
 }
 
 async function buscarAlertaAberto(produtoId) {
@@ -202,8 +296,12 @@ async function listarAlertas() {
 }
 
 async function marcarAlertaLido(id) {
-  await banco.executar('UPDATE alertas SET lido = 1 WHERE id = ?', [Number(id)]);
-  return true;
+  const resultado = await banco.executar('UPDATE alertas SET lido = 1 WHERE id = ?', [
+    Number(id),
+  ]);
+  if (resultado.affectedRows > 0) return true;
+  const [alerta] = await banco.consultar('SELECT id FROM alertas WHERE id = ?', [Number(id)]);
+  return Boolean(alerta);
 }
 
 async function fecharAlertasAbertos(produtoId) {
@@ -281,7 +379,11 @@ async function marcarNotificacaoLida(id) {
   const resultado = await banco.executar('UPDATE notificacoes SET lida = 1 WHERE id = ?', [
     Number(id),
   ]);
-  return resultado.affectedRows > 0;
+  if (resultado.affectedRows > 0) return true;
+  const [notificacao] = await banco.consultar('SELECT id FROM notificacoes WHERE id = ?', [
+    Number(id),
+  ]);
+  return Boolean(notificacao);
 }
 
 async function resumo() {
@@ -323,10 +425,14 @@ module.exports = {
   listarMovimentacoes,
   adicionarMovimentacao,
   buscarMovimentacaoPorId,
+  buscarMovimentacaoPorIdParaAtualizacao,
+  buscarEstornoPorOrigem,
   adicionarRastreabilidade,
   listarRastreabilidade,
   atualizarStatusRastreabilidadePorIds,
   atualizarStatusRastreabilidadePorMovimentacao,
+  registrarTransicoesRastreabilidade,
+  reverterTransicoesRastreabilidade,
   buscarAlertaAberto,
   adicionarAlerta,
   fecharAlertasAbertos,

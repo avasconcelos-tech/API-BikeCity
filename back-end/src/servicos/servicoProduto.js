@@ -4,9 +4,18 @@ const ErroNegocio = require('../erros/ErroNegocio');
 
 async function validarFornecedorExiste(id) {
   if (id === undefined || id === null || id === '') return 'Fornecedor é obrigatório.';
-  return (await repositorioFornecedor.buscarFornecedorPorId(id))
-    ? null
-    : 'Fornecedor informado não existe.';
+  if (
+    (typeof id !== 'number' && typeof id !== 'string') ||
+    (typeof id === 'string' && !id.trim()) ||
+    !Number.isInteger(Number(id)) ||
+    Number(id) < 1
+  ) {
+    return 'Fornecedor informado não existe.';
+  }
+  const fornecedor = await repositorioFornecedor.buscarFornecedorPorId(id);
+  if (!fornecedor) return 'Fornecedor informado não existe.';
+  if (!fornecedor.ativo) return 'Fornecedor informado está inativo.';
+  return null;
 }
 
 function validarEstoqueMinimo(valor) {
@@ -36,6 +45,9 @@ async function buscarProdutoPorId(id) {
 }
 
 async function criarProduto(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new ErroNegocio(400, 'Os dados do produto devem ser um objeto.');
+  }
   for (const [campo, nome] of [
     ['nome', 'Nome'],
     ['codigo_interno', 'Código interno'],
@@ -44,9 +56,14 @@ async function criarProduto(data) {
     ['localizacao_deposito', 'Localização'],
     ['custo', 'Custo'],
   ]) {
-    if (data[campo] === undefined || data[campo] === null || String(data[campo]).trim() === '') {
+    if (campo === 'custo' && typeof data[campo] !== 'number' && typeof data[campo] !== 'string')
+      throw new ErroNegocio(400, `${nome} deve ser um número válido.`);
+    if (campo !== 'custo' && typeof data[campo] !== 'string')
+      throw new ErroNegocio(400, `${nome} deve ser um texto válido.`);
+    if (String(data[campo]).trim() === '') {
       throw new ErroNegocio(400, `${nome} é obrigatório.`);
     }
+    if (campo !== 'custo') data[campo] = data[campo].trim();
   }
 
   const estoqueMinimo = validarEstoqueMinimo(data.estoque_minimo);
@@ -56,14 +73,37 @@ async function criarProduto(data) {
 
   const erroFornecedor = await validarFornecedorExiste(data.fornecedor_id);
   if (erroFornecedor) throw new ErroNegocio(400, erroFornecedor);
-  if (Number(data.custo) < 0) throw new ErroNegocio(400, 'Custo não pode ser negativo.');
+  const custo = Number(data.custo);
+  if (!Number.isFinite(custo) || custo < 0)
+    throw new ErroNegocio(400, 'Custo deve ser um número válido maior ou igual a zero.');
+  const demandaPrevista = Number(data.demanda_prevista ?? 0);
+  if (
+    typeof data.demanda_prevista === 'string' &&
+    !data.demanda_prevista.trim()
+  ) {
+    throw new ErroNegocio(400, 'Demanda prevista deve ser um número inteiro maior ou igual a 0.');
+  }
+  if (typeof data.demanda_prevista !== 'undefined' &&
+      typeof data.demanda_prevista !== 'number' &&
+      typeof data.demanda_prevista !== 'string') {
+    throw new ErroNegocio(400, 'Demanda prevista deve ser um número inteiro maior ou igual a 0.');
+  }
+  if (!Number.isInteger(demandaPrevista) || demandaPrevista < 0) {
+    throw new ErroNegocio(400, 'Demanda prevista deve ser um número inteiro maior ou igual a 0.');
+  }
 
   if (dimensoesObrigatorias(data.categoria, data.dimensoes)) {
     throw new ErroNegocio(400, 'Dimensões são obrigatórias para veículos.');
   }
 
   try {
-    return await repositorioProduto.criarProduto({ ...data, estoque_minimo: estoqueMinimo });
+    return await repositorioProduto.criarProduto({
+      ...data,
+      custo,
+      demanda_prevista: demandaPrevista,
+      estoque_atual: 0,
+      estoque_minimo: estoqueMinimo,
+    });
   } catch (erro) {
     if (String(erro.message).includes('UNIQUE'))
       throw new ErroNegocio(409, 'Código interno já cadastrado.');
@@ -72,12 +112,40 @@ async function criarProduto(data) {
 }
 
 async function atualizarProduto(id, dados) {
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
+    throw new ErroNegocio(400, 'Os dados do produto devem ser um objeto.');
+  }
   const produtoAtual = await buscarProdutoPorId(id);
   if (
     Object.hasOwn(dados, 'estoque_minimo') &&
     validarEstoqueMinimo(dados.estoque_minimo) === null
   ) {
     throw new ErroNegocio(400, 'Estoque mínimo deve ser um número inteiro maior ou igual a 0.');
+  }
+  if (Object.hasOwn(dados, 'custo')) {
+    if (
+      (typeof dados.custo !== 'number' && typeof dados.custo !== 'string') ||
+      (typeof dados.custo === 'string' && !dados.custo.trim())
+    )
+      throw new ErroNegocio(400, 'Custo deve ser um número válido maior ou igual a zero.');
+    const custo = Number(dados.custo);
+    if (!Number.isFinite(custo) || custo < 0)
+      throw new ErroNegocio(400, 'Custo deve ser um número válido maior ou igual a zero.');
+    dados.custo = custo;
+  }
+  if (Object.hasOwn(dados, 'demanda_prevista')) {
+    if (
+      (typeof dados.demanda_prevista !== 'number' &&
+        typeof dados.demanda_prevista !== 'string') ||
+      (typeof dados.demanda_prevista === 'string' && !dados.demanda_prevista.trim())
+    ) {
+      throw new ErroNegocio(400, 'Demanda prevista deve ser um número inteiro maior ou igual a 0.');
+    }
+    const demandaPrevista = Number(dados.demanda_prevista);
+    if (!Number.isInteger(demandaPrevista) || demandaPrevista < 0) {
+      throw new ErroNegocio(400, 'Demanda prevista deve ser um número inteiro maior ou igual a 0.');
+    }
+    dados.demanda_prevista = demandaPrevista;
   }
   if (
     (Object.hasOwn(dados, 'categoria') || Object.hasOwn(dados, 'dimensoes')) &&

@@ -9,10 +9,13 @@ if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
 const texto = (valor) => escaparHtml(valor ?? '-');
-const resposta = await getRelatorio().catch((erro) => {
+let resposta;
+try {
+  resposta = await getRelatorio();
+} catch (erro) {
   mostrarToast(erro.message || 'Não foi possível carregar o relatório.', 'erro');
-  return { dados: {} };
-});
+  throw erro;
+}
 const dados = resposta.dados;
 const estoque = dados.estoque || [];
 const movimentacoes = dados.movimentacoes || [];
@@ -52,6 +55,10 @@ const tipoMovimentacao = (tipo) =>
   })[tipo] ||
   tipo ||
   '-';
+const protegerFormulaCsv = (valor) => {
+  const texto = String(valor ?? '');
+  return /^\s*[=+\-@]/.test(texto) ? `'${texto}` : texto;
+};
 
 function renderizarRegistros(inicio = '', fim = '') {
   const movimentacoesFiltradas = movimentacoes.filter((item) =>
@@ -126,7 +133,11 @@ $('btn-exportar').addEventListener('click', () => {
     ]),
   ];
   const csv = linhas
-    .map((linha) => linha.map((valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`).join(';'))
+    .map((linha) =>
+      linha
+        .map((valor) => `"${protegerFormulaCsv(valor).replace(/"/g, '""')}"`)
+        .join(';'),
+    )
     .join('\n');
   const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');

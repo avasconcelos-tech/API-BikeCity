@@ -27,7 +27,7 @@ async function listarRastreabilidade(req, res) {
   });
 }
 async function registrarEntrada(req, res) {
-  const body = req.body;
+  const body = req.body || {};
   const dados = await servicoEstoque.registrarEntrada(
     body.produto_id,
     body.quantidade,
@@ -42,7 +42,7 @@ async function registrarEntrada(req, res) {
     .json({ status: 'sucesso', mensagem: 'Entrada registrada com sucesso.', dados });
 }
 async function registrarSaida(req, res) {
-  const body = req.body;
+  const body = req.body || {};
   const dados = await servicoEstoque.registrarSaida(
     body.produto_id,
     body.quantidade,
@@ -56,7 +56,7 @@ async function registrarSaida(req, res) {
     .json({ status: 'sucesso', mensagem: 'Saída de estoque registrada com sucesso.', dados });
 }
 async function registrarAjusteManual(req, res) {
-  const body = req.body;
+  const body = req.body || {};
   const dados = await servicoEstoque.registrarAjusteManual(
     body.produto_id,
     body.nova_quantidade,
@@ -68,17 +68,18 @@ async function registrarAjusteManual(req, res) {
     .json({ status: 'sucesso', mensagem: 'Ajuste manual realizado com sucesso.', dados });
 }
 async function registrarDevolucao(req, res) {
-  const dados = await servicoEstoque.registrarDevolucao(req.body, req.user.id);
+  const dados = await servicoEstoque.registrarDevolucao(req.body || {}, req.user.id);
   return res
     .status(201)
     .json({ status: 'sucesso', mensagem: 'Devolução registrada com sucesso.', dados });
 }
 async function registrarEstorno(req, res) {
+  const body = req.body || {};
   const dados = await servicoEstoque.registrarEstorno(
     req.params.id,
     req.user.id,
-    req.body.motivo,
-    req.body.observacao || '',
+    body.motivo,
+    body.observacao || '',
   );
   return res
     .status(201)
@@ -123,7 +124,8 @@ async function buscarCodigo(req, res) {
   return res.json({ status: 'sucesso', dados: produto });
 }
 async function marcarAlerta(req, res) {
-  await servicoEstoque.marcarAlertaLido(req.params.id);
+  const marcada = await servicoEstoque.marcarAlertaLido(req.params.id);
+  if (!marcada) return res.status(404).json({ status: 'erro', mensagem: 'Alerta não encontrado' });
   return res.json({ status: 'sucesso', mensagem: 'Alerta marcado como lido.' });
 }
 module.exports = {
