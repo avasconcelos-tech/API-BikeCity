@@ -12,4 +12,4 @@ VALUES
   (2,'Peça A','PEC-001','PECA_ESTRUTURAL','UN','Setor A',1,50,4,3,'NAO_APLICA',1),
   (3,'Bicicleta City','BIKE-001','VEICULO','UN','Setor C',1,1500,2,1,'MONTADO',1),
   (4,'Pneu de Segurança','PNEU-001','PECA_SEGURANCA','UN','Setor D',1,80,6,2,'NAO_APLICA',1)
-ON DUPLICATE KEY UPDATE id = VALUES(id);
+ON DUPLICATE KEY UPDATE id = VALUES(id);  

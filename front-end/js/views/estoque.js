@@ -139,9 +139,7 @@ async function carregarRastreabilidadeSaida() {
   }
   try {
     const resposta = await getRastreabilidade(produto.id);
-    const statusEsperado =
-      $('origem-devolucao').value === 'CLIENTE' ? 'SAIDA' : 'EM_ESTOQUE';
-    const itens = (resposta.dados || []).filter((item) => item.status === statusEsperado);
+    const itens = (resposta.dados || []).filter((item) => item.status === 'EM_ESTOQUE');
     box.innerHTML = `<fieldset class="rastreio-saida"><legend>Itens rastreáveis disponíveis</legend>${itens.map((item) => `<label class="rastreio-opcao"><input type="checkbox" name="rastreabilidade_saida" value="${escaparHtml(item.id)}"><span>${escaparHtml(item.numero_serie || item.identificador_unico || `Lote ${item.lote || '-'}`)} · ${escaparHtml(item.status)}</span></label>`).join('') || '<p>Nenhum item rastreável disponível.</p>'}</fieldset>`;
     const quantidade = Number($('qtd-saida').value || 1);
     box.querySelectorAll('input').forEach((input) =>
