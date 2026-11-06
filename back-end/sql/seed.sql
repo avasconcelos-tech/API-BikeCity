@@ -10,6 +10,7 @@ INSERT INTO produtos (id,nome,codigo_interno,categoria,unidade_medida,localizaca
 VALUES
   (1,'Bateria X','BAT-001','COMPONENTE_ELETRICO','UN','Setor B',1,100,0,3,'NAO_APLICA',1),
   (2,'Peça A','PEC-001','PECA_ESTRUTURAL','UN','Setor A',1,50,4,3,'NAO_APLICA',1),
-  (3,'Bicicleta City','BIKE-001','VEICULO','UN','Setor C',1,1500,2,1,'MONTADO',1),
   (4,'Pneu de Segurança','PNEU-001','PECA_SEGURANCA','UN','Setor D',1,80,6,2,'NAO_APLICA',1)
-ON DUPLICATE KEY UPDATE id = VALUES(id);  
+ON DUPLICATE KEY UPDATE id = VALUES(id);
+
+UPDATE produtos SET ativo = 0 WHERE id = 3 AND codigo_interno = 'BIKE-001';

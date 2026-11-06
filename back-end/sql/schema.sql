@@ -170,10 +170,40 @@ CREATE TABLE IF NOT EXISTS notificacoes (
     REFERENCES produtos(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DELETE r
+FROM rastreabilidade r
+JOIN produtos p ON p.id = r.produto_id
+WHERE p.codigo_interno = 'BIKE-001'
+  AND r.identificador_unico IN ('BIKE-CITY-001', 'BIKE-CITY-002')
+  AND r.status = 'EM_ESTOQUE'
+  AND r.movimentacao_id IS NULL;
+
 INSERT INTO schema_versao (versao, nome, aplicado_em)
 VALUES (1, '001_bikecity_mysql_baseline', CURRENT_TIMESTAMP)
 ON DUPLICATE KEY UPDATE versao = VALUES(versao);
 
 INSERT INTO schema_versao (versao, nome, aplicado_em)
 VALUES (2, '002_movimentacao_rastreabilidade', CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE versao = VALUES(versao);
+
+INSERT INTO schema_versao (versao, nome, aplicado_em)
+VALUES (3, '003_remover_rastreabilidade_demo_bike', CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE versao = VALUES(versao);
+
+UPDATE produtos
+SET ativo = 0, estoque_atual = 0
+WHERE codigo_interno = 'BIKE-001'
+  AND NOT EXISTS (SELECT 1 FROM schema_versao WHERE versao = 4);
+
+INSERT INTO schema_versao (versao, nome, aplicado_em)
+VALUES (4, '004_remover_saldo_demo_bicicleta', CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE versao = VALUES(versao);
+
+UPDATE produtos
+SET ativo = 0, estoque_atual = 0
+WHERE codigo_interno = 'PNEU-001'
+  AND NOT EXISTS (SELECT 1 FROM schema_versao WHERE versao = 5);
+
+INSERT INTO schema_versao (versao, nome, aplicado_em)
+VALUES (5, '005_remover_saldo_demo_pneu_seguranca', CURRENT_TIMESTAMP)
 ON DUPLICATE KEY UPDATE versao = VALUES(versao);
