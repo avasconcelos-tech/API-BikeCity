@@ -68,44 +68,74 @@ function ativarCard(id, acao) {
 
 function renderizarAlertas(alertas, notificacoes) {
   const lista = $('lista-alertas-dashboard');
-  const itens = [
-    ...alertas.map((alerta) => ({
+  const grupos = new Map();
+  const adicionarAoGrupo = (item) => {
+    const mensagem = String(item.mensagem || item.titulo || '').trim().toLocaleLowerCase();
+    const chave =
+      item.produto_id == null
+        ? `${item.tipo}:${item.id}`
+        : `produto:${item.produto_id}:${mensagem}`;
+    const grupo = grupos.get(chave) || { ...item, registros: [] };
+    grupo.registros.push(item);
+    grupos.set(chave, grupo);
+  };
+  alertas.forEach((alerta) =>
+    adicionarAoGrupo({
       id: alerta.id,
+      produto_id: alerta.produto_id,
       tipo: 'alerta',
       titulo: alerta.produto_nome || 'Alerta de estoque',
       mensagem: alerta.mensagem,
       lido: alerta.lido,
-    })),
-    ...notificacoes.map((notificacao) => ({
+    }),
+  );
+  notificacoes.forEach((notificacao) =>
+    adicionarAoGrupo({
       id: notificacao.id,
+      produto_id: notificacao.produto_id,
       tipo: 'notificacao',
       titulo: notificacao.titulo,
       mensagem: notificacao.mensagem,
       lido: notificacao.lida,
-    })),
-  ];
-  const pendentes = itens.filter((item) => !item.lido).length;
+    }),
+  );
+  const itens = [...grupos.values()];
+  const pendentes = itens.filter((item) => item.registros.some((registro) => !registro.lido)).length;
   $('contador-alertas-dashboard').textContent =
     `${pendentes} pendente${pendentes === 1 ? '' : 's'}`;
   lista.innerHTML =
     itens
-      .map(
-        (item) =>
-          `<article class="notification-item ${item.lido ? 'is-read' : ''}"><div><strong>${escaparHtml(item.titulo)}</strong><p>${escaparHtml(item.mensagem)}</p></div>${!item.lido ? `<button type="button" class="btn-marcar-alerta" data-id="${escaparHtml(item.id)}" data-tipo="${item.tipo}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`,
-      )
+      .map((item, indice) => {
+        const lido = item.registros.every((registro) => registro.lido);
+        return `<article class="notification-item ${lido ? 'is-read' : ''}"><div><strong>${escaparHtml(item.titulo)}</strong><p>${escaparHtml(item.mensagem)}</p></div>${!lido ? `<button type="button" class="btn-marcar-alerta" data-indice="${indice}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`;
+      })
       .join('') || '<p>Nenhuma notificação registrada.</p>';
   lista.querySelectorAll('.btn-marcar-alerta').forEach((botao) =>
     botao.addEventListener('click', async () => {
       botao.disabled = true;
       try {
-        const registros = botao.dataset.tipo === 'alerta' ? alertas : notificacoes;
-        if (botao.dataset.tipo === 'alerta') await marcarAlertaLido(botao.dataset.id);
-        else await marcarNotificacaoLida(botao.dataset.id);
-        const registro = registros.find((item) => String(item.id) === botao.dataset.id);
-        if (registro) {
-          if (botao.dataset.tipo === 'alerta') registro.lido = true;
-          else registro.lida = true;
-        }
+        const grupo = itens[Number(botao.dataset.indice)];
+        await Promise.all(
+          grupo.registros
+            .filter((registro) => !registro.lido)
+            .map((registro) =>
+              registro.tipo === 'alerta'
+                ? marcarAlertaLido(registro.id)
+                : marcarNotificacaoLida(registro.id),
+            ),
+        );
+        grupo.registros.forEach((registro) => {
+          registro.lido = true;
+          if (registro.tipo === 'notificacao') {
+            const notificacao = notificacoes.find(
+              (item) => String(item.id) === String(registro.id),
+            );
+            if (notificacao) notificacao.lida = true;
+          } else {
+            const alerta = alertas.find((item) => String(item.id) === String(registro.id));
+            if (alerta) alerta.lido = true;
+          }
+        });
         renderizarAlertas(alertas, notificacoes);
       } catch (erro) {
         mostrarToast(erro.message || 'Não foi possível marcar como lido.', 'erro');
