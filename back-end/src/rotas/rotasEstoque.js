@@ -11,6 +11,12 @@ router.patch('/alertas/:id/lido', validarAutenticacao, todos, c.marcarAlerta);
 router.get('/notificacoes', validarAutenticacao, todos, c.notificacoes);
 router.patch('/notificacoes/:id/lida', validarAutenticacao, todos, c.marcarNotificacaoLida);
 router.get('/buscar-codigo/:codigo', validarAutenticacao, todos, c.buscarCodigo);
+router.get(
+  '/pedidos-venda/:numero/quantidade-devolucao',
+  validarAutenticacao,
+  todos,
+  c.consultarQuantidadeDevolucao,
+);
 router.get('/relatorios', validarAutenticacao, todos, c.relatorio);
 router.post('/entradas', validarAutenticacao, todos, c.registrarEntrada);
 router.post('/saidas', validarAutenticacao, todos, c.registrarSaida);

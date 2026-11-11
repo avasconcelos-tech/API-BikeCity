@@ -6,6 +6,7 @@ import {
   postDevolucao,
   postAjuste,
   getRastreabilidade,
+  getQuantidadeDisponivelDevolucao,
 } from '../api/services.js';
 import { apiFetch } from '../api/client.js';
 import { formatarData } from '../utilitarios/formatters.js';
@@ -15,6 +16,7 @@ if (!checarAutenticacao()) throw new Error('Não autenticado');
 let produtos = [];
 let historico = [];
 let paginaHistorico = 1;
+let sequenciaValidacaoDevolucao = 0;
 const ITENS_POR_PAGINA = 10;
 const $ = (id) => document.getElementById(id);
 function associarLabels(container = document) {
@@ -123,7 +125,56 @@ $('form-entrada')?.addEventListener('submit', async (e) => {
 $('produto-saida')?.addEventListener('change', () => carregarRastreabilidadeSaida());
 $('qtd-saida')?.addEventListener('input', () => carregarRastreabilidadeSaida());
 $('produto-devolucao')?.addEventListener('change', () => carregarRastreabilidadeDevolucao());
-$('qtd-devolucao')?.addEventListener('input', () => carregarRastreabilidadeDevolucao());
+$('qtd-devolucao')?.addEventListener('input', () => {
+  $('qtd-devolucao').setCustomValidity('');
+  carregarRastreabilidadeDevolucao();
+});
+$('produto-devolucao')?.addEventListener('change', () => atualizarDisponibilidadeDevolucao());
+$('pedido-devolucao')?.addEventListener('change', () => atualizarDisponibilidadeDevolucao());
+$('pedido-devolucao')?.addEventListener('input', () => $('qtd-devolucao').setCustomValidity(''));
+async function atualizarDisponibilidadeDevolucao(reportar = false) {
+  const quantidade = $('qtd-devolucao');
+  const informacao = $('info-quantidade-devolucao');
+  const numeroPedido = $('pedido-devolucao').value.trim();
+  const produtoId = $('produto-devolucao').value;
+  const sequencia = ++sequenciaValidacaoDevolucao;
+  quantidade.setCustomValidity('');
+  quantidade.removeAttribute('max');
+  if ($('origem-devolucao').value !== 'CLIENTE') {
+    informacao.textContent = '';
+    return true;
+  }
+  if (!numeroPedido || !produtoId) {
+    informacao.textContent =
+      'Selecione o produto e informe o pedido de venda para validar o saldo.';
+    return false;
+  }
+  try {
+    const resposta = await getQuantidadeDisponivelDevolucao(produtoId, numeroPedido);
+    if (sequencia !== sequenciaValidacaoDevolucao) return false;
+    const disponivel = Number(resposta.dados.quantidade_disponivel);
+    quantidade.max = String(disponivel);
+    informacao.textContent = `Disponível para devolução neste pedido: ${disponivel} unidade(s).`;
+    const valor = Number(quantidade.value);
+    if (!Number.isInteger(valor) || valor <= 0) {
+      quantidade.setCustomValidity(
+        'A quantidade devolvida deve ser um número inteiro maior que zero.',
+      );
+    } else if (valor > disponivel) {
+      quantidade.setCustomValidity(
+        `A quantidade não pode exceder as ${disponivel} unidade(s) disponíveis neste pedido.`,
+      );
+    }
+    if (reportar && !quantidade.checkValidity()) quantidade.reportValidity();
+    return quantidade.checkValidity();
+  } catch (erro) {
+    if (sequencia !== sequenciaValidacaoDevolucao) return false;
+    informacao.textContent = erro.message || 'Não foi possível validar o pedido informado.';
+    quantidade.setCustomValidity(informacao.textContent);
+    if (reportar) quantidade.reportValidity();
+    return false;
+  }
+}
 async function carregarRastreabilidadeSaida() {
   const produto = pSelecionado('produto-saida');
   const box = $('rastreio-saida');
@@ -196,6 +247,7 @@ $('form-saida')?.addEventListener('submit', async (e) => {
 });
 $('form-devolucao')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (!(await atualizarDisponibilidadeDevolucao(true))) return;
   const dados = {
     produto_id: Number($('produto-devolucao').value),
     quantidade: Number($('qtd-devolucao').value),
@@ -203,6 +255,7 @@ $('form-devolucao')?.addEventListener('submit', async (e) => {
     motivo: $('motivo-devolucao').value,
     estado_produto: $('estado-devolucao').value,
     numero_pedido_venda: $('pedido-devolucao').value,
+    nao_vendido: $('nao-vendido').checked,
     reaproveitavel: $('reaproveitavel').checked,
     rastreabilidade_ids: [
       ...document.querySelectorAll('input[name="rastreabilidade_devolucao"]:checked'),
@@ -213,9 +266,14 @@ $('form-devolucao')?.addEventListener('submit', async (e) => {
 });
 $('origem-devolucao')?.addEventListener('change', (e) => {
   $('pedido-devolucao').required = e.target.value === 'CLIENTE';
+  $('pedido-devolucao').disabled = e.target.value !== 'CLIENTE';
+  $('nao-vendido').disabled = e.target.value !== 'CLIENTE';
+  atualizarDisponibilidadeDevolucao();
   carregarRastreabilidadeDevolucao();
 });
 $('pedido-devolucao').required = $('origem-devolucao')?.value === 'CLIENTE';
+$('pedido-devolucao').disabled = $('origem-devolucao')?.value !== 'CLIENTE';
+$('nao-vendido').disabled = $('origem-devolucao')?.value !== 'CLIENTE';
 $('form-ajuste')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const dados = {
@@ -234,6 +292,13 @@ async function enviar(fn, msg, form) {
     await fn();
     mostrarToast(msg);
     formulario?.reset();
+    if (form === 'form-devolucao') {
+      const cliente = $('origem-devolucao').value === 'CLIENTE';
+      $('pedido-devolucao').required = cliente;
+      $('pedido-devolucao').disabled = !cliente;
+      $('nao-vendido').disabled = !cliente;
+      await atualizarDisponibilidadeDevolucao();
+    }
     await atualizarProdutos();
     camposRastreio('entrada');
     await carregarRastreabilidadeSaida();
@@ -330,9 +395,9 @@ function renderHistorico() {
     pagina
       .map(
         (m) =>
-          `<tr><td>${escaparHtml(m.id)}</td><td>${escaparHtml(m.produto_nome || m.produto_id)}</td><td>${escaparHtml(tipoMovimentacao(m.tipo))}</td><td>${escaparHtml(m.quantidade)}</td><td>${escaparHtml(alteracaoMovimentacao(m))}</td><td>${escaparHtml(m.destinatario || '-')}</td><td>${escaparHtml(m.motivo || '-')}</td><td>${escaparHtml(formatarData(m.data_movimentacao))}</td></tr>`,
+          `<tr><td>${escaparHtml(m.id)}</td><td>${escaparHtml(m.produto_nome || m.produto_id)}</td><td>${escaparHtml(tipoMovimentacao(m.tipo))}</td><td>${escaparHtml(m.quantidade)}</td><td>${escaparHtml(alteracaoMovimentacao(m))}</td><td>${escaparHtml(m.destinatario || '-')}</td><td>${escaparHtml(m.numero_pedido_venda || '-')}</td><td>${escaparHtml(m.motivo || '-')}</td><td>${escaparHtml(formatarData(m.data_movimentacao))}</td></tr>`,
       )
-      .join('') || '<tr><td colspan="8">Nenhuma movimentação encontrada.</td></tr>';
+      .join('') || '<tr><td colspan="9">Nenhuma movimentação encontrada.</td></tr>';
   const totalPaginas = Math.max(1, Math.ceil(filtrado.length / ITENS_POR_PAGINA));
   paginaHistorico = Math.min(paginaHistorico, totalPaginas);
   let paginacao = $('paginacao-historico');
@@ -365,7 +430,7 @@ async function carregarHistorico() {
     renderHistorico();
   } catch (e) {
     $('tbody-estoque').innerHTML =
-      `<tr><td colspan="8">${escaparHtml(e.message || 'Não foi possível carregar o histórico.')}</td></tr>`;
+      `<tr><td colspan="9">${escaparHtml(e.message || 'Não foi possível carregar o histórico.')}</td></tr>`;
   }
 }
 async function carregarFornecedores() {

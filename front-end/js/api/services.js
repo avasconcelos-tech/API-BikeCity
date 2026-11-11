@@ -52,6 +52,13 @@ export function postDevolucao(dados) {
     body: JSON.stringify(dados),
   });
 }
+export function getQuantidadeDisponivelDevolucao(produtoId, numeroPedido) {
+  const numero = encodeURIComponent(numeroPedido);
+  const produto = encodeURIComponent(produtoId);
+  return apiFetch(
+    `/api/v1/estoque/pedidos-venda/${numero}/quantidade-devolucao?produto_id=${produto}`,
+  );
+}
 export function postAjuste(dados) {
   return apiFetch('/api/v1/estoque/ajuste-manual', {
     method: 'POST',

@@ -21,11 +21,30 @@ const pool = createPool({
 async function inicializarBanco() {
   const executarArquivoSql = async (arquivo) => {
     const sql = await fs.readFile(path.join(__dirname, '../../sql', arquivo), 'utf8');
-    for (const statement of sql.split(/;\s*(?:\r?\n|$)/).map((parte) => parte.trim()).filter(Boolean)) {
+    for (const statement of sql
+      .split(/;\s*(?:\r?\n|$)/)
+      .map((parte) => parte.trim())
+      .filter(Boolean)) {
       await pool.query(statement);
     }
   };
   await executarArquivoSql('schema.sql');
+  const [colunasDevolucoes] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'devolucoes'`,
+  );
+  if (!colunasDevolucoes.some((coluna) => coluna.COLUMN_NAME === 'nao_vendido')) {
+    await pool.query(
+      'ALTER TABLE devolucoes ADD COLUMN nao_vendido TINYINT(1) NOT NULL DEFAULT 0 AFTER reaproveitavel',
+    );
+  }
+  await pool.query(
+    `INSERT IGNORE INTO pedidos_venda (numero_pedido_venda)
+     SELECT DISTINCT numero_pedido_venda
+     FROM movimentacoes
+     WHERE tipo = 'SAIDA' AND numero_pedido_venda IS NOT NULL AND TRIM(numero_pedido_venda) <> ''`,
+  );
   if (!['test', 'development'].includes(process.env.NODE_ENV)) return;
   await executarArquivoSql('seed.sql');
 }
@@ -77,6 +96,7 @@ async function resetarBancoParaTestes() {
       'alertas',
       'auditoria',
       'devolucoes',
+      'pedidos_venda',
       'notificacoes',
       'produtos',
       'usuarios',

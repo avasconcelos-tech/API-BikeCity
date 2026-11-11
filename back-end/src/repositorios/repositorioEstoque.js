@@ -3,7 +3,14 @@ const banco = require('./conexaoBanco');
 async function listarMovimentacoes(filtros = {}, page = 1, limit = 20) {
   const params = [];
   const clausulas = [];
-  const { produto_id: produtoId, tipo, usuario_id: usuarioId, data_inicio: inicio, data_fim: fim, busca } = filtros;
+  const {
+    produto_id: produtoId,
+    tipo,
+    usuario_id: usuarioId,
+    data_inicio: inicio,
+    data_fim: fim,
+    busca,
+  } = filtros;
   if (produtoId !== null && produtoId !== undefined && produtoId !== '') {
     clausulas.push('m.produto_id = ?');
     params.push(Number(produtoId));
@@ -132,6 +139,70 @@ async function buscarMovimentacaoPorIdParaAtualizacao(id) {
     [Number(id)],
   );
   return movimentacao || null;
+}
+
+async function prepararPedidoVenda(numeroPedido) {
+  await banco.executar(
+    `INSERT INTO pedidos_venda (numero_pedido_venda)
+     VALUES (?)
+     ON DUPLICATE KEY UPDATE numero_pedido_venda = VALUES(numero_pedido_venda)`,
+    [String(numeroPedido).trim()],
+  );
+  const [pedido] = await banco.consultar(
+    'SELECT * FROM pedidos_venda WHERE numero_pedido_venda = ? FOR UPDATE',
+    [String(numeroPedido).trim()],
+  );
+  return pedido || null;
+}
+
+async function buscarPedidoVenda(numeroPedido, bloquear = false) {
+  const [pedido] = await banco.consultar(
+    `SELECT * FROM pedidos_venda WHERE numero_pedido_venda = ?${bloquear ? ' FOR UPDATE' : ''}`,
+    [String(numeroPedido).trim()],
+  );
+  return pedido || null;
+}
+
+async function resumirPedidoVenda(numeroPedido, produtoId = null) {
+  const filtroProduto = produtoId === null ? '' : ' AND produto_id = ?';
+  const parametrosPorCodigo = [String(numeroPedido).trim()];
+  const parametrosComProduto =
+    produtoId === null ? parametrosPorCodigo : [...parametrosPorCodigo, Number(produtoId)];
+  const [saidas] = await banco.consultar(
+    `SELECT COALESCE(SUM(quantidade), 0) AS total
+     FROM movimentacoes
+     WHERE tipo = 'SAIDA' AND numero_pedido_venda = ?${filtroProduto}`,
+    parametrosComProduto,
+  );
+  const [estornos] = await banco.consultar(
+    `SELECT COALESCE(SUM(e.quantidade), 0) AS total
+     FROM movimentacoes e
+     JOIN movimentacoes origem ON origem.id = e.movimentacao_origem_id
+     WHERE e.tipo = 'ESTORNO' AND origem.tipo = 'SAIDA'
+       AND origem.numero_pedido_venda = ?${produtoId === null ? '' : ' AND origem.produto_id = ?'}`,
+    parametrosComProduto,
+  );
+  const [devolucoes] = await banco.consultar(
+    `SELECT COALESCE(SUM(quantidade), 0) AS total,
+       COALESCE(SUM(CASE WHEN nao_vendido = 1 THEN quantidade ELSE 0 END), 0) AS nao_vendido
+     FROM devolucoes
+     WHERE origem = 'CLIENTE' AND numero_pedido_venda = ?${filtroProduto}`,
+    parametrosComProduto,
+  );
+  return {
+    quantidade_expedida: Math.max(0, Number(saidas.total) - Number(estornos.total)),
+    quantidade_devolvida: Number(devolucoes.total),
+    quantidade_nao_vendida: Number(devolucoes.nao_vendido),
+  };
+}
+
+async function atualizarStatusPedidoVenda(numeroPedido, status) {
+  await banco.executar(
+    `UPDATE pedidos_venda
+     SET status_comercial = ?, atualizado_em = CURRENT_TIMESTAMP(3)
+     WHERE numero_pedido_venda = ?`,
+    [status, String(numeroPedido).trim()],
+  );
 }
 
 async function buscarEstornoPorOrigem(movimentacaoId) {
@@ -296,9 +367,7 @@ async function listarAlertas() {
 }
 
 async function marcarAlertaLido(id) {
-  const resultado = await banco.executar('UPDATE alertas SET lido = 1 WHERE id = ?', [
-    Number(id),
-  ]);
+  const resultado = await banco.executar('UPDATE alertas SET lido = 1 WHERE id = ?', [Number(id)]);
   if (resultado.affectedRows > 0) return true;
   const [alerta] = await banco.consultar('SELECT id FROM alertas WHERE id = ?', [Number(id)]);
   return Boolean(alerta);
@@ -331,8 +400,8 @@ async function adicionarAuditoria(r) {
 
 async function adicionarDevolucao(d) {
   const resultado = await banco.executar(
-    `INSERT INTO devolucoes(produto_id,usuario_id,origem,motivo,estado_produto,numero_pedido_venda,reaproveitavel,quantidade,data_devolucao,status,observacao)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO devolucoes(produto_id,usuario_id,origem,motivo,estado_produto,numero_pedido_venda,reaproveitavel,nao_vendido,quantidade,data_devolucao,status,observacao)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       d.produto_id,
       d.usuario_id,
@@ -341,6 +410,7 @@ async function adicionarDevolucao(d) {
       d.estado_produto,
       d.numero_pedido_venda ?? null,
       d.reaproveitavel ? 1 : 0,
+      d.nao_vendido ? 1 : 0,
       d.quantidade,
       d.data_devolucao,
       d.status ?? 'APROVADA',
@@ -352,12 +422,19 @@ async function adicionarDevolucao(d) {
 
 async function listarDevolucoes() {
   const devolucoes = await banco.consultar(
-    `SELECT d.*,p.nome AS produto_nome,u.nome AS usuario_nome
+    `SELECT d.*,p.nome AS produto_nome,u.nome AS usuario_nome,
+       pv.id AS pedido_venda_id,pv.status_comercial AS status_comercial_pedido
      FROM devolucoes d
      LEFT JOIN produtos p ON p.id = d.produto_id
-     LEFT JOIN usuarios u ON u.id = d.usuario_id ORDER BY d.id DESC`,
+     LEFT JOIN usuarios u ON u.id = d.usuario_id
+     LEFT JOIN pedidos_venda pv ON pv.numero_pedido_venda = d.numero_pedido_venda
+     ORDER BY d.id DESC`,
   );
-  return devolucoes.map((d) => ({ ...d, reaproveitavel: Boolean(d.reaproveitavel) }));
+  return devolucoes.map((d) => ({
+    ...d,
+    reaproveitavel: Boolean(d.reaproveitavel),
+    nao_vendido: Boolean(d.nao_vendido),
+  }));
 }
 
 async function adicionarNotificacao(n) {
@@ -397,11 +474,7 @@ async function resumo() {
 }
 
 async function relatorio(filtros = {}) {
-  const movimentacoes = await listarMovimentacoes(
-    filtros,
-    filtros.page || 1,
-    filtros.limit || 20,
-  );
+  const movimentacoes = await listarMovimentacoes(filtros, filtros.page || 1, filtros.limit || 20);
   const [estoque, devolucoes, alertas, resumoGeral] = await Promise.all([
     banco.consultar(
       `SELECT id,nome,codigo_interno,categoria,estoque_atual,estoque_minimo,custo,localizacao_deposito,estado_montagem
@@ -426,6 +499,10 @@ module.exports = {
   adicionarMovimentacao,
   buscarMovimentacaoPorId,
   buscarMovimentacaoPorIdParaAtualizacao,
+  prepararPedidoVenda,
+  buscarPedidoVenda,
+  resumirPedidoVenda,
+  atualizarStatusPedidoVenda,
   buscarEstornoPorOrigem,
   adicionarRastreabilidade,
   listarRastreabilidade,

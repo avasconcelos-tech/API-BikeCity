@@ -73,6 +73,13 @@ async function registrarDevolucao(req, res) {
     .status(201)
     .json({ status: 'sucesso', mensagem: 'Devolução registrada com sucesso.', dados });
 }
+async function consultarQuantidadeDevolucao(req, res) {
+  const dados = await servicoEstoque.consultarQuantidadeDevolucao(
+    req.params.numero,
+    req.query.produto_id,
+  );
+  return res.json({ status: 'sucesso', dados });
+}
 async function registrarEstorno(req, res) {
   const body = req.body || {};
   const dados = await servicoEstoque.registrarEstorno(
@@ -136,6 +143,7 @@ module.exports = {
   registrarSaida: asyncHandler(registrarSaida),
   registrarAjusteManual: asyncHandler(registrarAjusteManual),
   registrarDevolucao: asyncHandler(registrarDevolucao),
+  consultarQuantidadeDevolucao: asyncHandler(consultarQuantidadeDevolucao),
   registrarEstorno: asyncHandler(registrarEstorno),
   resumo: asyncHandler(resumo),
   relatorio: asyncHandler(relatorio),

@@ -13,7 +13,10 @@ async function bloquearProdutoSemConflito(produtoLido) {
   if (!produto) return erro(404, 'Produto não encontrado.');
   if (!produto.ativo) return erro(400, 'Produto inativo');
   if (Number(produto.estoque_atual) !== Number(produtoLido.estoque_atual)) {
-    return erro(409, 'O estoque foi alterado em outra operação. Atualize os dados e tente novamente.');
+    return erro(
+      409,
+      'O estoque foi alterado em outra operação. Atualize os dados e tente novamente.',
+    );
   }
   return produto;
 }
@@ -26,10 +29,7 @@ function obrigatorio(v, campo) {
     : null;
 }
 function quantidadePositiva(v, c = 'quantidade') {
-  if (
-    (typeof v !== 'number' && typeof v !== 'string') ||
-    (typeof v === 'string' && !v.trim())
-  ) {
+  if ((typeof v !== 'number' && typeof v !== 'string') || (typeof v === 'string' && !v.trim())) {
     return `${c} deve ser um número inteiro maior que zero.`;
   }
   const n = Number(v);
@@ -97,7 +97,10 @@ function validarRastreabilidade(produto, body = {}) {
     return null;
   }
   if (tipo === 'BATERIA') {
-    if (!String(dadosItem.numero_serie || '').trim() || !String(dadosItem.data_validade || '').trim())
+    if (
+      !String(dadosItem.numero_serie || '').trim() ||
+      !String(dadosItem.data_validade || '').trim()
+    )
       return 'Para baterias, é obrigatório informar numero_serie e data_validade.';
   } else if (tipo === 'MOTOR_CONTROLADOR') {
     if (!String(dadosItem.numero_serie || '').trim() || !String(dadosItem.lote || '').trim())
@@ -275,15 +278,18 @@ async function registrarSaida(produtoId, quantidade, destinatario, motivo, usuar
     obrigatorio(motivo, 'motivo') ||
     obrigatorio(body.numero_pedido_venda, 'numero_pedido_venda');
   if (validacao) return erro(400, validacao);
+  if (typeof body.numero_pedido_venda !== 'string')
+    return erro(400, 'numero_pedido_venda deve ser um texto válido.');
+  body = { ...body, numero_pedido_venda: body.numero_pedido_venda.trim() };
   const quantidadeNumerica = Number(quantidade);
   if (quantidadeNumerica > produto.estoque_atual)
     return erro(400, 'Estoque insuficiente para a quantidade solicitada.');
   const novoEstoque = produto.estoque_atual - quantidadeNumerica,
     agora = new Date().toISOString();
   const tipo = tipoRastreabilidade(produto);
-  const disponiveis = (await repositorioEstoque
-    .listarRastreabilidade(produtoId))
-    .filter((item) => item.status === 'EM_ESTOQUE');
+  const disponiveis = (await repositorioEstoque.listarRastreabilidade(produtoId)).filter(
+    (item) => item.status === 'EM_ESTOQUE',
+  );
   const idsSolicitados = Array.isArray(body.rastreabilidade_ids)
     ? body.rastreabilidade_ids.map(Number)
     : [];
@@ -315,6 +321,7 @@ async function registrarSaida(produtoId, quantidade, destinatario, motivo, usuar
   }
   const movimentacao = await executarEmTransacao(async () => {
     const produtoMovimentado = await bloquearProdutoSemConflito(produto);
+    await repositorioEstoque.prepararPedidoVenda(body.numero_pedido_venda);
     await repositorioProduto.atualizarEstoqueProduto(produtoId, novoEstoque);
     const registro = await repositorioEstoque.adicionarMovimentacao({
       produto_id: Number(produtoId),
@@ -338,7 +345,10 @@ async function registrarSaida(produtoId, quantidade, destinatario, motivo, usuar
       'EM_ESTOQUE',
     );
     if (tipo !== 'NENHUMA' && rastreabilidadeAtualizada !== rast.length) {
-      return erro(409, 'A rastreabilidade foi alterada em outra operação. Atualize e tente novamente.');
+      return erro(
+        409,
+        'A rastreabilidade foi alterada em outra operação. Atualize e tente novamente.',
+      );
     }
     await repositorioEstoque.registrarTransicoesRastreabilidade(
       registro.id,
@@ -432,6 +442,14 @@ async function registrarDevolucao(d, usuarioId) {
     return erro(400, `estado_produto deve ser um dos valores: ${estadosPermitidos.join(', ')}.`);
   if (d.origem === 'CLIENTE' && !d.numero_pedido_venda)
     return erro(400, 'numero_pedido_venda é obrigatório para devolução de cliente.');
+  if (d.origem === 'CLIENTE' && typeof d.numero_pedido_venda !== 'string')
+    return erro(400, 'numero_pedido_venda deve ser um texto válido.');
+  if (d.nao_vendido !== undefined && typeof d.nao_vendido !== 'boolean')
+    return erro(400, 'nao_vendido deve ser verdadeiro ou falso.');
+  const numeroPedidoVenda =
+    d.origem === 'CLIENTE' ? d.numero_pedido_venda.trim() : d.numero_pedido_venda;
+  if (d.nao_vendido && d.origem !== 'CLIENTE')
+    return erro(400, 'A opção não vendido só pode ser usada em devoluções de cliente.');
   const n = Number(d.quantidade),
     tipo = tipoRastreabilidade(produto),
     ids = Array.isArray(d.rastreabilidade_ids) ? d.rastreabilidade_ids.map(Number) : [],
@@ -439,12 +457,9 @@ async function registrarDevolucao(d, usuarioId) {
     rast =
       tipo === 'NENHUMA'
         ? []
-        : (await repositorioEstoque
-            .listarRastreabilidade(produto.id))
-            .filter(
-              (item) =>
-                item.status === statusRastreabilidade && ids.includes(Number(item.id)),
-            );
+        : (await repositorioEstoque.listarRastreabilidade(produto.id)).filter(
+            (item) => item.status === statusRastreabilidade && ids.includes(Number(item.id)),
+          );
   if (tipo !== 'NENHUMA' && (ids.length !== n || rast.length !== n))
     return erro(
       400,
@@ -455,13 +470,38 @@ async function registrarDevolucao(d, usuarioId) {
   const reap = d.origem === 'CLIENTE' && d.estado_produto === 'INTACTO';
   const delta = d.origem === 'PARA_FORNECEDOR' ? -n : reap ? n : 0;
   const novoEstoque = Number(produto.estoque_atual) + delta;
-  const { devolucao: dev, movimentacao: mov } = await executarEmTransacao(async () => {
+  const {
+    devolucao: dev,
+    movimentacao: mov,
+    statusComercialPedido,
+    pedidoVendaId,
+  } = await executarEmTransacao(async () => {
     const produtoMovimentado = await bloquearProdutoSemConflito(produto);
+    let pedido;
+    if (d.origem === 'CLIENTE') {
+      pedido = await repositorioEstoque.buscarPedidoVenda(numeroPedidoVenda, true);
+      if (!pedido) return erro(400, 'Pedido de venda não encontrado.');
+      const resumoProduto = await repositorioEstoque.resumirPedidoVenda(
+        numeroPedidoVenda,
+        produto.id,
+      );
+      if (!resumoProduto.quantidade_expedida)
+        return erro(400, 'O pedido não possui saída registrada para este produto.');
+      const quantidadeDisponivel =
+        resumoProduto.quantidade_expedida - resumoProduto.quantidade_devolvida;
+      if (n > quantidadeDisponivel)
+        return erro(
+          400,
+          `A quantidade devolvida não pode exceder as ${quantidadeDisponivel} unidade(s) ainda disponíveis para devolução neste pedido.`,
+        );
+    }
     const agora = new Date().toISOString();
     const devolucao = await repositorioEstoque.adicionarDevolucao({
       ...d,
+      numero_pedido_venda: numeroPedidoVenda,
       usuario_id: usuarioId,
       reaproveitavel: reap,
+      nao_vendido: d.origem === 'CLIENTE' && d.nao_vendido === true,
       data_devolucao: agora,
     });
     if (delta) await repositorioProduto.atualizarEstoqueProduto(produto.id, novoEstoque);
@@ -471,9 +511,9 @@ async function registrarDevolucao(d, usuarioId) {
       tipo: 'DEVOLUCAO',
       quantidade: delta,
       data_movimentacao: agora,
-      numero_pedido_venda: d.numero_pedido_venda,
+      numero_pedido_venda: numeroPedidoVenda,
       motivo: d.motivo,
-      observacao: `Origem: ${d.origem}; Estado: ${d.estado_produto}`,
+      observacao: `Origem: ${d.origem}; Estado: ${d.estado_produto}; Não vendido: ${d.nao_vendido === true ? 'Sim' : 'Não'}`,
       estoque_anterior: produtoMovimentado.estoque_atual,
       estoque_novo: novoEstoque,
     });
@@ -489,7 +529,10 @@ async function registrarDevolucao(d, usuarioId) {
       statusRastreabilidade,
     );
     if (tipo !== 'NENHUMA' && rastreabilidadeAtualizada !== rast.length) {
-      return erro(409, 'A rastreabilidade foi alterada em outra operação. Atualize e tente novamente.');
+      return erro(
+        409,
+        'A rastreabilidade foi alterada em outra operação. Atualize e tente novamente.',
+      );
     }
     await repositorioEstoque.registrarTransicoesRastreabilidade(
       movimentacao.id,
@@ -499,23 +542,62 @@ async function registrarDevolucao(d, usuarioId) {
         status_novo: status,
       })),
     );
-    return { devolucao, movimentacao };
+    let statusComercialPedido = null;
+    if (d.origem === 'CLIENTE') {
+      const resumoPedido = await repositorioEstoque.resumirPedidoVenda(numeroPedidoVenda);
+      if (resumoPedido.quantidade_devolvida >= resumoPedido.quantidade_expedida) {
+        statusComercialPedido =
+          resumoPedido.quantidade_nao_vendida >= resumoPedido.quantidade_expedida
+            ? 'NAO_VENDIDO'
+            : 'DEVOLVIDO';
+      } else {
+        statusComercialPedido = 'DEVOLUCAO_PARCIAL';
+      }
+      await repositorioEstoque.atualizarStatusPedidoVenda(numeroPedidoVenda, statusComercialPedido);
+    }
+    return {
+      devolucao,
+      movimentacao,
+      statusComercialPedido,
+      pedidoVendaId: pedido?.id ?? null,
+    };
   });
   await verificarEstoqueMinimo({ ...produto, estoque_atual: novoEstoque });
   return sucesso(201, 'Devolução registrada com sucesso.', {
     devolucao_id: dev.id,
     movimentacao_id: mov.id,
+    pedido_venda_id: pedidoVendaId,
     reaproveitada: reap,
+    status_comercial_pedido: statusComercialPedido,
     novo_estoque_total: novoEstoque,
   });
+}
+
+async function consultarQuantidadeDevolucao(numeroPedido, produtoId) {
+  if (!numeroPedido || !String(numeroPedido).trim())
+    return erro(400, 'Número do pedido é obrigatório.');
+  const produto = await repositorioProduto.buscarProdutoPorId(produtoId);
+  if (!produto) return erro(404, 'Produto não encontrado.');
+  const numeroNormalizado = String(numeroPedido).trim();
+  const pedido = await repositorioEstoque.buscarPedidoVenda(numeroNormalizado);
+  if (!pedido) return erro(404, 'Pedido de venda não encontrado.');
+  const resumo = await repositorioEstoque.resumirPedidoVenda(numeroNormalizado, produto.id);
+  if (!resumo.quantidade_expedida)
+    return erro(404, 'O pedido não possui saída registrada para este produto.');
+  return {
+    pedido_venda_id: Number(pedido.id),
+    numero_pedido_venda: numeroNormalizado,
+    status_comercial: pedido.status_comercial,
+    quantidade_expedida: resumo.quantidade_expedida,
+    quantidade_devolvida: resumo.quantidade_devolvida,
+    quantidade_disponivel: Math.max(0, resumo.quantidade_expedida - resumo.quantidade_devolvida),
+  };
 }
 async function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = '') {
   if (!motivo || !String(motivo).trim()) return erro(400, 'motivo é obrigatório para o estorno.');
 
   const resultado = await executarEmTransacao(async () => {
-    const origem = await repositorioEstoque.buscarMovimentacaoPorIdParaAtualizacao(
-      movimentacaoId,
-    );
+    const origem = await repositorioEstoque.buscarMovimentacaoPorIdParaAtualizacao(movimentacaoId);
     if (!origem) return erro(404, 'Movimentação de origem não encontrada.');
     if (origem.tipo === 'ESTORNO')
       return erro(400, 'Não é possível estornar uma movimentação de estorno.');
@@ -554,8 +636,10 @@ async function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = 
       movimentacao_origem_id: Number(origem.id),
     });
 
-    const resultadoRastreabilidade =
-      await repositorioEstoque.reverterTransicoesRastreabilidade(origem.id, movimentacao.id);
+    const resultadoRastreabilidade = await repositorioEstoque.reverterTransicoesRastreabilidade(
+      origem.id,
+      movimentacao.id,
+    );
     if (!resultadoRastreabilidade.revertida) {
       return erro(409, 'Não é possível estornar: a rastreabilidade já foi movimentada.');
     }
@@ -564,7 +648,10 @@ async function registrarEstorno(movimentacaoId, usuarioId, motivo, observacao = 
       ['SAIDA', 'DEVOLUCAO'].includes(origem.tipo) &&
       !resultadoRastreabilidade.encontrada
     ) {
-      return erro(409, 'Não é possível estornar esta movimentação rastreável sem seu histórico de itens.');
+      return erro(
+        409,
+        'Não é possível estornar esta movimentação rastreável sem seu histórico de itens.',
+      );
     }
     return { movimentacao, produto, origem, deltaOriginal, novoEstoque };
   });
@@ -601,6 +688,7 @@ module.exports = {
   registrarSaida,
   registrarAjusteManual,
   registrarDevolucao,
+  consultarQuantidadeDevolucao,
   registrarEstorno,
   obterResumo,
   obterRelatorio,

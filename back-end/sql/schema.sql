@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS devolucoes (
   estado_produto VARCHAR(40) NOT NULL,
   numero_pedido_venda VARCHAR(100) NULL,
   reaproveitavel TINYINT(1) NOT NULL DEFAULT 0,
+  nao_vendido TINYINT(1) NOT NULL DEFAULT 0,
   quantidade INT NOT NULL,
   data_devolucao DATETIME(3) NOT NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'APROVADA',
@@ -156,6 +157,15 @@ CREATE TABLE IF NOT EXISTS devolucoes (
     REFERENCES produtos(id),
   CONSTRAINT fk_devolucoes_usuario FOREIGN KEY (usuario_id)
     REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pedidos_venda (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  numero_pedido_venda VARCHAR(100) NOT NULL UNIQUE,
+  status_comercial VARCHAR(40) NOT NULL DEFAULT 'EM_ABERTO',
+  criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+    ON UPDATE CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notificacoes (

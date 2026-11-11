@@ -55,6 +55,15 @@ const tipoMovimentacao = (tipo) =>
   })[tipo] ||
   tipo ||
   '-';
+const statusPedido = (status) =>
+  ({
+    EM_ABERTO: 'Em aberto',
+    DEVOLUCAO_PARCIAL: 'Devolução parcial',
+    DEVOLVIDO: 'Devolvido',
+    NAO_VENDIDO: 'Não vendido',
+  })[status] ||
+  status ||
+  '-';
 const protegerFormulaCsv = (valor) => {
   const texto = String(valor ?? '');
   return /^\s*[=+\-@]/.test(texto) ? `'${texto}` : texto;
@@ -74,16 +83,16 @@ function renderizarRegistros(inicio = '', fim = '') {
     movimentacoesFiltradas
       .map(
         (item) =>
-          `<tr><td>${texto(formatarData(item.data_movimentacao))}</td><td>${texto(item.produto_nome || item.produto_id)}</td><td>${texto(tipoMovimentacao(item.tipo))}</td><td>${texto(item.quantidade)}</td><td>${texto(item.motivo)}</td><td>${texto(item.usuario_nome)}</td></tr>`,
+          `<tr><td>${texto(formatarData(item.data_movimentacao))}</td><td>${texto(item.produto_nome || item.produto_id)}</td><td>${texto(item.numero_pedido_venda)}</td><td>${texto(tipoMovimentacao(item.tipo))}</td><td>${texto(item.quantidade)}</td><td>${texto(item.motivo)}</td><td>${texto(item.usuario_nome)}</td></tr>`,
       )
-      .join('') || '<tr><td colspan="6">Nenhuma movimentação no período.</td></tr>';
+      .join('') || '<tr><td colspan="7">Nenhuma movimentação no período.</td></tr>';
   $('tbody-devolucoes').innerHTML =
     devolucoesFiltradas
       .map(
         (item) =>
-          `<tr><td>${texto(formatarData(item.data_devolucao))}</td><td>${texto(item.produto_nome || item.produto_id)}</td><td>${texto(item.quantidade)}</td><td>${texto(item.origem)}</td><td>${texto(item.motivo)}</td><td>${texto(item.status)}</td></tr>`,
+          `<tr><td>${texto(formatarData(item.data_devolucao))}</td><td>${texto(item.produto_nome || item.produto_id)}</td><td>${texto(item.numero_pedido_venda)}</td><td>${texto(item.quantidade)}</td><td>${texto(item.origem)}</td><td><span class="return-badge ${item.reaproveitavel ? 'is-reusable' : 'is-not-reusable'}">${item.reaproveitavel ? 'Reaproveitável' : 'Não reaproveitável'}</span>${item.nao_vendido ? '<span class="return-badge is-unsold">Não vendido</span>' : ''}</td><td>${texto(item.motivo)}</td><td>${texto(item.status)}</td><td>${texto(statusPedido(item.status_comercial_pedido))}</td></tr>`,
       )
-      .join('') || '<tr><td colspan="6">Nenhuma devolução no período.</td></tr>';
+      .join('') || '<tr><td colspan="9">Nenhuma devolução no período.</td></tr>';
   $('tbody-alertas').innerHTML =
     alertasFiltrados
       .map(
@@ -106,11 +115,12 @@ $('btn-limpar-filtro').addEventListener('click', () => {
 $('btn-exportar').addEventListener('click', () => {
   const { movimentacoesFiltradas, devolucoesFiltradas, alertasFiltrados } = dadosFiltrados();
   const linhas = [
-    ['Tipo', 'Data', 'Produto', 'Detalhes', 'Quantidade', 'Status'],
+    ['Tipo', 'Data', 'Produto', 'Pedido', 'Detalhes', 'Quantidade', 'Status'],
     ...movimentacoesFiltradas.map((item) => [
       'Movimentação',
       item.data_movimentacao,
       item.produto_nome || item.produto_id,
+      item.numero_pedido_venda || '',
       tipoMovimentacao(item.tipo),
       item.quantidade,
       '',
@@ -119,6 +129,7 @@ $('btn-exportar').addEventListener('click', () => {
       'Devolução',
       item.data_devolucao,
       item.produto_nome || item.produto_id,
+      item.numero_pedido_venda || '',
       item.motivo,
       item.quantidade,
       item.status,
@@ -127,6 +138,7 @@ $('btn-exportar').addEventListener('click', () => {
       'Alerta',
       item.criado_em,
       item.produto_nome || item.produto_id,
+      item.numero_pedido_venda || '',
       item.mensagem,
       '',
       item.lido ? 'Lido' : 'Pendente',
@@ -134,9 +146,7 @@ $('btn-exportar').addEventListener('click', () => {
   ];
   const csv = linhas
     .map((linha) =>
-      linha
-        .map((valor) => `"${protegerFormulaCsv(valor).replace(/"/g, '""')}"`)
-        .join(';'),
+      linha.map((valor) => `"${protegerFormulaCsv(valor).replace(/"/g, '""')}"`).join(';'),
     )
     .join('\n');
   const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));

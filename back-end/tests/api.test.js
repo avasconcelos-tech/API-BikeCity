@@ -26,11 +26,22 @@ test('violação de unicidade retorna conflito 409', () => {
   let corpo;
   const resposta = {
     headersSent: false,
-    status(codigo) { status = codigo; return this; },
-    json(dados) { corpo = dados; return this; }
+    status(codigo) {
+      status = codigo;
+      return this;
+    },
+    json(dados) {
+      corpo = dados;
+      return this;
+    },
   };
 
-  tratarErros({ code: 'ER_DUP_ENTRY', message: "Duplicate entry for key 'usuarios.email'" }, {}, resposta, () => {});
+  tratarErros(
+    { code: 'ER_DUP_ENTRY', message: "Duplicate entry for key 'usuarios.email'" },
+    {},
+    resposta,
+    () => {},
+  );
 
   assert.equal(status, 409);
   assert.match(corpo.mensagem, /registro/i);
@@ -43,13 +54,13 @@ test('configuração usa o JWT_SECRET do ambiente', () => {
 });
 
 test('listar usuários não expõe senha_hash na resposta', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
   assert.equal(jwt.decode(token).nome, 'Gerente Teste');
 
-  const res = await request(app)
-    .get('/api/v1/usuarios')
-    .set('Authorization', `Bearer ${token}`);
+  const res = await request(app).get('/api/v1/usuarios').set('Authorization', `Bearer ${token}`);
 
   assert.equal(res.status, 200);
   assert.ok(Array.isArray(res.body.dados));
@@ -58,9 +69,15 @@ test('listar usuários não expõe senha_hash na resposta', async () => {
 });
 
 test('login retorna token JWT e bloqueia após três tentativas falhas', async () => {
-  const res1 = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'errada' });
-  const res2 = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'errada' });
-  const res3 = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'errada' });
+  const res1 = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'errada' });
+  const res2 = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'errada' });
+  const res3 = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'errada' });
 
   assert.equal(res1.status, 401);
   assert.equal(res2.status, 401);
@@ -69,7 +86,9 @@ test('login retorna token JWT e bloqueia após três tentativas falhas', async (
 });
 
 test('usuário pode atualizar seus dados, ser desativado e trocar a própria senha', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const detalhes = await request(app)
@@ -104,7 +123,13 @@ test('usuário pode atualizar seus dados, ser desativado e trocar a própria sen
   const usuarioSecundario = await request(app)
     .post('/api/v1/usuarios')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'Usuário Temporário', email: 'temporario@teste.com', cargo: 'Estoquista', perfil: 'OPERACIONAL', senha: 'senha123' });
+    .send({
+      nome: 'Usuário Temporário',
+      email: 'temporario@teste.com',
+      cargo: 'Estoquista',
+      perfil: 'OPERACIONAL',
+      senha: 'senha123',
+    });
   const usuarioId = usuarioSecundario.body.dados.id;
   const inativacao = await request(app)
     .delete(`/api/v1/usuarios/${usuarioId}`)
@@ -122,7 +147,9 @@ test('usuário pode atualizar seus dados, ser desativado e trocar a própria sen
 });
 
 test('entrada de estoque exige dados de rastreabilidade corretos para baterias', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const res = await request(app)
@@ -135,7 +162,7 @@ test('entrada de estoque exige dados de rastreabilidade corretos para baterias',
       valor_custo: 100,
       numero_nota_fiscal: 'NF-1',
       numero_pedido_compra: 'PC-1',
-      itens_rastreaveis: [{ lote: 'LOT-1' }]
+      itens_rastreaveis: [{ lote: 'LOT-1' }],
     });
 
   assert.equal(res.status, 400);
@@ -143,7 +170,9 @@ test('entrada de estoque exige dados de rastreabilidade corretos para baterias',
 });
 
 test('saída rejeita quantidade inválida', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const res = await request(app)
@@ -156,51 +185,72 @@ test('saída rejeita quantidade inválida', async () => {
 });
 
 test('saída maior que o estoque disponível retorna erro 400', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const res = await request(app)
     .post('/api/v1/estoque/saidas')
     .set('Authorization', `Bearer ${token}`)
-    .send({ produto_id: 2, quantidade: 99, destinatario: 'Setor A', motivo: 'Uso interno', numero_pedido_venda: 'PV-99' });
+    .send({
+      produto_id: 2,
+      quantidade: 99,
+      destinatario: 'Setor A',
+      motivo: 'Uso interno',
+      numero_pedido_venda: 'PV-99',
+    });
 
   assert.equal(res.status, 400);
   assert.match(res.body.mensagem, /estoque insuficiente|insuficiente/i);
 });
 
 test('saída de estoque gera alerta quando estoque atinge o mínimo', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
-  await request(app)
-    .post('/api/v1/estoque/entradas')
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      produto_id: 2,
-      quantidade: 5,
-      fornecedor_id: 1,
-      valor_custo: 50,
-      numero_nota_fiscal: 'NF-2',
-      numero_pedido_compra: 'PC-2'
-    });
+  await request(app).post('/api/v1/estoque/entradas').set('Authorization', `Bearer ${token}`).send({
+    produto_id: 2,
+    quantidade: 5,
+    fornecedor_id: 1,
+    valor_custo: 50,
+    numero_nota_fiscal: 'NF-2',
+    numero_pedido_compra: 'PC-2',
+  });
 
   const res = await request(app)
     .post('/api/v1/estoque/saidas')
     .set('Authorization', `Bearer ${token}`)
-    .send({ produto_id: 2, quantidade: 6, destinatario: 'Setor A', motivo: 'Uso interno', numero_pedido_venda: 'PV-4' });
+    .send({
+      produto_id: 2,
+      quantidade: 6,
+      destinatario: 'Setor A',
+      motivo: 'Uso interno',
+      numero_pedido_venda: 'PV-4',
+    });
 
   assert.equal(res.status, 201);
   assert.equal(res.body.dados.alerta_gerado, true);
 });
 
 test('lista alertas de estoque gerados', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   await request(app)
     .post('/api/v1/estoque/saidas')
     .set('Authorization', `Bearer ${token}`)
-    .send({ produto_id: 2, quantidade: 4, destinatario: 'Setor A', motivo: 'Uso interno', numero_pedido_venda: 'PV-4' });
+    .send({
+      produto_id: 2,
+      quantidade: 4,
+      destinatario: 'Setor A',
+      motivo: 'Uso interno',
+      numero_pedido_venda: 'PV-4',
+    });
 
   const res = await request(app)
     .get('/api/v1/estoque/alertas')
@@ -208,11 +258,15 @@ test('lista alertas de estoque gerados', async () => {
 
   assert.equal(res.status, 200);
   assert.ok(Array.isArray(res.body.dados));
-  assert.ok(res.body.dados.some((alerta) => alerta.produto_id === 2 && alerta.mensagem.includes('Peça A')));
+  assert.ok(
+    res.body.dados.some((alerta) => alerta.produto_id === 2 && alerta.mensagem.includes('Peça A')),
+  );
 });
 
 test('alertas e notificações acompanham o saldo nas movimentações e notificações podem ser marcadas como lidas', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -220,14 +274,26 @@ test('alertas e notificações acompanham o saldo nas movimentações e notifica
     const saida = await request(app)
       .post('/api/v1/estoque/saidas')
       .set(headers)
-      .send({ produto_id: 2, quantidade: 1, destinatario: 'Setor A', motivo: 'Consumo', numero_pedido_venda: pedido });
+      .send({
+        produto_id: 2,
+        quantidade: 1,
+        destinatario: 'Setor A',
+        motivo: 'Consumo',
+        numero_pedido_venda: pedido,
+      });
     assert.equal(saida.status, 201);
   }
 
   let alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
   let notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
-  assert.equal(alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length, 1);
-  assert.equal(notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length, 2);
+  assert.equal(
+    alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length,
+    1,
+  );
+  assert.equal(
+    notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length,
+    2,
+  );
 
   const notificacaoId = notificacoes.body.dados[0].id;
   const marcarLida = await request(app)
@@ -237,23 +303,26 @@ test('alertas e notificações acompanham o saldo nas movimentações e notifica
   notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
   assert.equal(
     notificacoes.body.dados.find((notificacao) => notificacao.id === notificacaoId).lida,
-    true
+    true,
   );
   const notificacaoInexistente = await request(app)
     .patch('/api/v1/estoque/notificacoes/999999/lida')
     .set(headers);
   assert.equal(notificacaoInexistente.status, 404);
 
-  const entrada = await request(app)
-    .post('/api/v1/estoque/entradas')
-    .set(headers)
-    .send({
-      produto_id: 2, quantidade: 2, fornecedor_id: 1,
-      numero_nota_fiscal: 'NF-RECUPERA', numero_pedido_compra: 'PC-RECUPERA'
-    });
+  const entrada = await request(app).post('/api/v1/estoque/entradas').set(headers).send({
+    produto_id: 2,
+    quantidade: 2,
+    fornecedor_id: 1,
+    numero_nota_fiscal: 'NF-RECUPERA',
+    numero_pedido_compra: 'PC-RECUPERA',
+  });
   assert.equal(entrada.status, 201);
   alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
-  assert.equal(alertas.body.dados.some((alerta) => alerta.produto_id === 2 && !alerta.lido), false);
+  assert.equal(
+    alertas.body.dados.some((alerta) => alerta.produto_id === 2 && !alerta.lido),
+    false,
+  );
 
   const ajuste = await request(app)
     .post('/api/v1/estoque/ajuste-manual')
@@ -262,8 +331,14 @@ test('alertas e notificações acompanham o saldo nas movimentações e notifica
   assert.equal(ajuste.status, 201);
   alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
   notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
-  assert.equal(alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length, 1);
-  assert.equal(notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length, 4);
+  assert.equal(
+    alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length,
+    1,
+  );
+  assert.equal(
+    notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length,
+    4,
+  );
 
   const recuperarPorAjuste = await request(app)
     .post('/api/v1/estoque/ajuste-manual')
@@ -271,23 +346,31 @@ test('alertas e notificações acompanham o saldo nas movimentações e notifica
     .send({ produto_id: 2, nova_quantidade: 4, justificativa: 'Reposição confirmada' });
   assert.equal(recuperarPorAjuste.status, 201);
 
-  const devolucao = await request(app)
-    .post('/api/v1/estoque/devolucoes')
-    .set(headers)
-    .send({
-      produto_id: 2, quantidade: 1, origem: 'PARA_FORNECEDOR',
-      motivo: 'Devolução ao fornecedor', estado_produto: 'DANIFICADO'
-    });
+  const devolucao = await request(app).post('/api/v1/estoque/devolucoes').set(headers).send({
+    produto_id: 2,
+    quantidade: 1,
+    origem: 'PARA_FORNECEDOR',
+    motivo: 'Devolução ao fornecedor',
+    estado_produto: 'DANIFICADO',
+  });
   assert.equal(devolucao.status, 201);
 
   alertas = await request(app).get('/api/v1/estoque/alertas').set(headers);
   notificacoes = await request(app).get('/api/v1/estoque/notificacoes').set(headers);
-  assert.equal(alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length, 1);
-  assert.equal(notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length, 6);
+  assert.equal(
+    alertas.body.dados.filter((alerta) => alerta.produto_id === 2 && !alerta.lido).length,
+    1,
+  );
+  assert.equal(
+    notificacoes.body.dados.filter((notificacao) => notificacao.produto_id === 2).length,
+    6,
+  );
 });
 
 test('produto específico, atualização e inativação funcionam com lista filtrada', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const detalhe = await request(app)
@@ -307,7 +390,7 @@ test('produto específico, atualização e inativação funcionam com lista filt
       custo: 75,
       estoque_minimo: 2,
       demanda_prevista: 18,
-      estado_montagem: 'NAO_APLICA'
+      estado_montagem: 'NAO_APLICA',
     });
 
   assert.equal(atualizacao.status, 200, JSON.stringify(atualizacao.body));
@@ -329,9 +412,7 @@ test('produto específico, atualização e inativação funcionam com lista filt
   assert.equal(inativacao.status, 200);
   assert.equal(inativacao.body.dados.ativo, false);
 
-  const lista = await request(app)
-    .get('/api/v1/produtos')
-    .set('Authorization', `Bearer ${token}`);
+  const lista = await request(app).get('/api/v1/produtos').set('Authorization', `Bearer ${token}`);
 
   assert.equal(lista.status, 200);
   assert.ok(!lista.body.dados.some((produto) => produto.id === 2));
@@ -341,7 +422,9 @@ test('produto específico, atualização e inativação funcionam com lista filt
     .set('Authorization', `Bearer ${token}`);
 
   assert.equal(listaComInativos.status, 200);
-  assert.ok(listaComInativos.body.dados.some((produto) => produto.id === 2 && produto.ativo === false));
+  assert.ok(
+    listaComInativos.body.dados.some((produto) => produto.id === 2 && produto.ativo === false),
+  );
 
   const reativacao = await request(app)
     .patch('/api/v1/produtos/2/ativar')
@@ -352,7 +435,9 @@ test('produto específico, atualização e inativação funcionam com lista filt
 });
 
 test('produtos inativos não recebem movimentações de estoque e só podem ser reativados explicitamente', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const inativacao = await request(app)
@@ -382,10 +467,42 @@ test('produtos inativos não recebem movimentações de estoque e só podem ser 
   assert.equal(inativacaoComSaldoZerado.body.dados.ativo, false);
 
   const movimentacoes = await Promise.all([
-    request(app).post('/api/v1/estoque/entradas').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, fornecedor_id: 1, numero_nota_fiscal: 'NF-999', numero_pedido_compra: 'PC-999' }),
-    request(app).post('/api/v1/estoque/saidas').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, destinatario: 'Setor A', motivo: 'Uso interno', numero_pedido_venda: 'PV-999' }),
-    request(app).post('/api/v1/estoque/ajuste-manual').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, nova_quantidade: 1, justificativa: 'Ajuste de teste' }),
-    request(app).post('/api/v1/estoque/devolucoes').set('Authorization', `Bearer ${token}`).send({ produto_id: 2, quantidade: 1, origem: 'CLIENTE', motivo: 'Devolução', estado_produto: 'INTACTO', numero_pedido_venda: 'PV-DEV', reaproveitavel: true })
+    request(app)
+      .post('/api/v1/estoque/entradas')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        produto_id: 2,
+        quantidade: 1,
+        fornecedor_id: 1,
+        numero_nota_fiscal: 'NF-999',
+        numero_pedido_compra: 'PC-999',
+      }),
+    request(app)
+      .post('/api/v1/estoque/saidas')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        produto_id: 2,
+        quantidade: 1,
+        destinatario: 'Setor A',
+        motivo: 'Uso interno',
+        numero_pedido_venda: 'PV-999',
+      }),
+    request(app)
+      .post('/api/v1/estoque/ajuste-manual')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ produto_id: 2, nova_quantidade: 1, justificativa: 'Ajuste de teste' }),
+    request(app)
+      .post('/api/v1/estoque/devolucoes')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        produto_id: 2,
+        quantidade: 1,
+        origem: 'CLIENTE',
+        motivo: 'Devolução',
+        estado_produto: 'INTACTO',
+        numero_pedido_venda: 'PV-DEV',
+        reaproveitavel: true,
+      }),
   ]);
 
   for (const res of movimentacoes) {
@@ -402,7 +519,9 @@ test('produtos inativos não recebem movimentações de estoque e só podem ser 
 });
 
 test('ajuste manual rejeita nova_quantidade inválida', async () => {
-  const gerenteLogin = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const gerenteLogin = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = gerenteLogin.body.dados.token;
 
   const res = await request(app)
@@ -415,7 +534,9 @@ test('ajuste manual rejeita nova_quantidade inválida', async () => {
 });
 
 test('ajuste manual exige perfil GERENTE e registra auditoria', async () => {
-  const gerenteLogin = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const gerenteLogin = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = gerenteLogin.body.dados.token;
 
   const res = await request(app)
@@ -429,22 +550,21 @@ test('ajuste manual exige perfil GERENTE e registra auditoria', async () => {
 });
 
 test('lista movimentações do estoque com filtro por produto', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
-  await request(app)
-    .post('/api/v1/estoque/entradas')
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      produto_id: 2,
-      quantidade: 3,
-      fornecedor_id: 1,
-      valor_custo: 50,
-      numero_nota_fiscal: 'NF-3',
-      numero_pedido_compra: 'PC-3',
-      numero_serie: 'SERIE-123',
-      lote: 'LOTE-ABC'
-    });
+  await request(app).post('/api/v1/estoque/entradas').set('Authorization', `Bearer ${token}`).send({
+    produto_id: 2,
+    quantidade: 3,
+    fornecedor_id: 1,
+    valor_custo: 50,
+    numero_nota_fiscal: 'NF-3',
+    numero_pedido_compra: 'PC-3',
+    numero_serie: 'SERIE-123',
+    lote: 'LOTE-ABC',
+  });
 
   const res = await request(app)
     .get('/api/v1/estoque/movimentacoes?produto_id=2')
@@ -456,40 +576,52 @@ test('lista movimentações do estoque com filtro por produto', async () => {
 });
 
 test('upload rejeita arquivo maior que 5MB com mensagem clara', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const res = await request(app)
     .post('/api/v1/uploads/imagens')
     .set('Authorization', `Bearer ${token}`)
-    .attach('imagem', Buffer.alloc(6 * 1024 * 1024, 'x'), { filename: 'grande.png', contentType: 'image/png' });
+    .attach('imagem', Buffer.alloc(6 * 1024 * 1024, 'x'), {
+      filename: 'grande.png',
+      contentType: 'image/png',
+    });
 
   assert.equal(res.status, 400);
   assert.match(res.body.mensagem, /muito grande|5MB|máximo/i);
 });
 
 test('upload rejeita arquivo com mimetype e extensão falsificados', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const res = await request(app)
     .post('/api/v1/uploads/imagens')
     .set('Authorization', `Bearer ${token}`)
-    .attach('imagem', Buffer.from('conteudo-que-nao-e-imagem'), { filename: 'arquivo.png', contentType: 'image/png' });
+    .attach('imagem', Buffer.from('conteudo-que-nao-e-imagem'), {
+      filename: 'arquivo.png',
+      contentType: 'image/png',
+    });
 
   assert.equal(res.status, 400);
   assert.match(res.body.mensagem, /imagem|arquivo/i);
 });
 
 test('upload de imagem salva arquivo na pasta uploads', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const pngValido = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF' +
-    'c0C2AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJ0UkG' +
-    'AAAAAAgI0v9QAAAAASUVORK5CYII=',
-    'base64'
+      'c0C2AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJ0UkG' +
+      'AAAAAAgI0v9QAAAAASUVORK5CYII=',
+    'base64',
   );
 
   const res = await request(app)
@@ -508,7 +640,9 @@ test('upload de imagem salva arquivo na pasta uploads', async () => {
 });
 
 test('fornecedor é criado e consultado com validação de produto', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const cadastroFornecedor = await request(app)
@@ -554,36 +688,83 @@ test('fornecedor é criado e consultado com validação de produto', async () =>
       custo: 45,
       dimensoes: '10x10',
       estoque_minimo: 2,
-      estado_montagem: 'NAO_APLICA'
+      estado_montagem: 'NAO_APLICA',
     });
 
   assert.equal(produtoInvalido.status, 400);
   assert.match(produtoInvalido.body.mensagem, /fornecedor/i);
 });
 
+test('produto criado retorna sucesso e permanece persistido', async () => {
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const codigo = 'PROD-PERSISTIDO-TESTE';
+  const criacao = await request(app)
+    .post('/api/v1/produtos')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      nome: 'Produto persistido',
+      codigo_interno: codigo,
+      categoria: 'PECA_ESTRUTURAL',
+      unidade_medida: 'UN',
+      localizacao_deposito: 'Prateleira A',
+      fornecedor_id: 1,
+      custo: 19.9,
+      estoque_minimo: 2,
+    });
+
+  assert.equal(criacao.status, 201);
+  assert.equal(criacao.body.status, 'sucesso');
+  assert.ok(criacao.body.dados.id);
+  assert.equal(criacao.body.dados.nome, 'Produto persistido');
+
+  const listagem = await request(app)
+    .get('/api/v1/produtos')
+    .set('Authorization', `Bearer ${token}`);
+  assert.ok(listagem.body.dados.some((produto) => produto.codigo_interno === codigo));
+});
+
 test('CNPJ valida formato e dígitos, impede duplicidade e protege inativação de fornecedor com produto ativo', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const cnpjInvalido = await request(app)
     .post('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'CNPJ Inválido', cnpj: '11.222.333/0001-80' });
+    .send({ nome: 'CNPJ Inválido', cnpj: '11.222.333/0001-80', contato: 'Pessoa de contato' });
   assert.equal(cnpjInvalido.status, 400);
   assert.match(cnpjInvalido.body.mensagem, /CNPJ inválido/i);
+
+  const cnpjObrigatorio = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Sem CNPJ', contato: 'Pessoa de contato' });
+  assert.equal(cnpjObrigatorio.status, 400);
+  assert.match(cnpjObrigatorio.body.mensagem, /CNPJ é obrigatório/i);
+
+  const contatoObrigatorio = await request(app)
+    .post('/api/v1/fornecedores')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ nome: 'Sem contato', cnpj: '11.222.333/0001-81' });
+  assert.equal(contatoObrigatorio.status, 400);
+  assert.match(contatoObrigatorio.body.mensagem, /Contato é obrigatório/i);
 
   const fornecedorA = await request(app)
     .post('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'Fornecedor A', cnpj: '11.222.333/0001-81' });
+    .send({ nome: 'Fornecedor A', cnpj: '11.222.333/0001-81', contato: 'contato-a@example.com' });
   const fornecedorB = await request(app)
     .post('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'Fornecedor B', cnpj: '04.252.011/0001-10' });
+    .send({ nome: 'Fornecedor B', cnpj: '04.252.011/0001-10', contato: '(11) 99999-9999' });
   const fornecedorAlfanumerico = await request(app)
     .post('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'Fornecedor Alfanumérico', cnpj: '12.ABC.345/01DE-35' });
+    .send({ nome: 'Fornecedor Alfanumérico', cnpj: '12.ABC.345/01DE-35', contato: 'Comercial' });
   assert.equal(fornecedorA.status, 201);
   assert.equal(fornecedorA.body.dados.cnpj, '11222333000181');
   assert.equal(fornecedorB.status, 201);
@@ -593,13 +774,13 @@ test('CNPJ valida formato e dígitos, impede duplicidade e protege inativação 
   const cnpjDuplicado = await request(app)
     .post('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'Duplicado', cnpj: '11222333000181' });
+    .send({ nome: 'Duplicado', cnpj: '11222333000181', contato: 'Contato' });
   assert.equal(cnpjDuplicado.status, 409);
 
   const atualizacaoDuplicada = await request(app)
     .put(`/api/v1/fornecedores/${fornecedorB.body.dados.id}`)
     .set('Authorization', `Bearer ${token}`)
-    .send({ nome: 'Fornecedor B', cnpj: '11.222.333/0001-81' });
+    .send({ nome: 'Fornecedor B', cnpj: '11.222.333/0001-81', contato: 'Contato' });
   assert.equal(atualizacaoDuplicada.status, 409);
 
   const fornecedorComProduto = await request(app)
@@ -616,18 +797,23 @@ test('CNPJ valida formato e dígitos, impede duplicidade e protege inativação 
   const lista = await request(app)
     .get('/api/v1/fornecedores')
     .set('Authorization', `Bearer ${token}`);
-  assert.equal(lista.body.dados.some((item) => item.id === fornecedorB.body.dados.id), false);
+  assert.equal(
+    lista.body.dados.some((item) => item.id === fornecedorB.body.dados.id),
+    false,
+  );
 });
 
 test('upload de imagem vincula ao produto correto', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const pngValido = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF' +
-    'c0C2AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJ0UkG' +
-    'AAAAAAgI0v9QAAAAASUVORK5CYII=',
-    'base64'
+      'c0C2AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJ0UkG' +
+      'AAAAAAgI0v9QAAAAASUVORK5CYII=',
+    'base64',
   );
 
   const res = await request(app)
@@ -658,14 +844,16 @@ test('upload de imagem vincula ao produto correto', async () => {
 });
 
 test('upload de imagem para produto inexistente retorna 404', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
 
   const pngValido = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF' +
-    'c0C2AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJ0UkG' +
-    'AAAAAAgI0v9QAAAAASUVORK5CYII=',
-    'base64'
+      'c0C2AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJ0UkG' +
+      'AAAAAAgI0v9QAAAAASUVORK5CYII=',
+    'base64',
   );
 
   const res = await request(app)
@@ -678,62 +866,187 @@ test('upload de imagem para produto inexistente retorna 404', async () => {
 });
 
 test('requisitos de rastreabilidade cobrem veículo e peça de segurança', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email:'gerente@teste.com', senha:'senha123' });
-  const token=login.body.dados.token;
-  const veiculo=await request(app).post('/api/v1/estoque/entradas').set('Authorization',`Bearer ${token}`).send({produto_id:3,quantidade:1,fornecedor_id:1,numero_nota_fiscal:'NF-V',numero_pedido_compra:'PC-V'});
-  assert.equal(veiculo.status,400); assert.match(veiculo.body.mensagem,/ID único/i);
-  const pneu=await request(app).post('/api/v1/estoque/entradas').set('Authorization',`Bearer ${token}`).send({produto_id:4,quantidade:1,fornecedor_id:1,numero_nota_fiscal:'NF-P',numero_pedido_compra:'PC-P'});
-  assert.equal(pneu.status,400); assert.match(pneu.body.mensagem,/lote/i);
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const veiculo = await request(app)
+    .post('/api/v1/estoque/entradas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      produto_id: 3,
+      quantidade: 1,
+      fornecedor_id: 1,
+      numero_nota_fiscal: 'NF-V',
+      numero_pedido_compra: 'PC-V',
+    });
+  assert.equal(veiculo.status, 400);
+  assert.match(veiculo.body.mensagem, /ID único/i);
+  const pneu = await request(app)
+    .post('/api/v1/estoque/entradas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      produto_id: 4,
+      quantidade: 1,
+      fornecedor_id: 1,
+      numero_nota_fiscal: 'NF-P',
+      numero_pedido_compra: 'PC-P',
+    });
+  assert.equal(pneu.status, 400);
+  assert.match(pneu.body.mensagem, /lote/i);
 });
 
 test('entrada registra dados fiscais e rastreabilidade no histórico', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email:'gerente@teste.com', senha:'senha123' });
-  const token=login.body.dados.token;
-  const res=await request(app).post('/api/v1/estoque/entradas').set('Authorization',`Bearer ${token}`).send({produto_id:1,quantidade:1,fornecedor_id:1,numero_nota_fiscal:'NF-R',numero_pedido_compra:'PC-R',numero_serie:'BAT-R',data_validade:'2027-01-01',tipo_transporte:'Caminhão'});
-  assert.equal(res.status,201);
-  const rast=await request(app).get('/api/v1/estoque/rastreabilidade?produto_id=1').set('Authorization',`Bearer ${token}`);
-  assert.equal(rast.status,200);assert.equal(rast.body.dados[0].numero_serie,'BAT-R');
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const res = await request(app)
+    .post('/api/v1/estoque/entradas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      produto_id: 1,
+      quantidade: 1,
+      fornecedor_id: 1,
+      numero_nota_fiscal: 'NF-R',
+      numero_pedido_compra: 'PC-R',
+      numero_serie: 'BAT-R',
+      data_validade: '2027-01-01',
+      tipo_transporte: 'Caminhão',
+    });
+  assert.equal(res.status, 201);
+  const rast = await request(app)
+    .get('/api/v1/estoque/rastreabilidade?produto_id=1')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(rast.status, 200);
+  assert.equal(rast.body.dados[0].numero_serie, 'BAT-R');
 });
 
 test('entrada preserva séries informadas e saída usa a série selecionada', async () => {
-  const login = await request(app).post('/api/v1/auth/login').send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
   const token = login.body.dados.token;
   const entrada = await request(app)
     .post('/api/v1/estoque/entradas')
     .set('Authorization', `Bearer ${token}`)
-    .send({ produto_id: 1, quantidade: 2, fornecedor_id: 1, numero_nota_fiscal: 'NF-S', numero_pedido_compra: 'PC-S', itens_rastreaveis: [{ numero_serie: 'SERIE-A', data_validade: '2027-01-01' }, { numero_serie: 'SERIE-B', data_validade: '2027-01-01' }] });
+    .send({
+      produto_id: 1,
+      quantidade: 2,
+      fornecedor_id: 1,
+      numero_nota_fiscal: 'NF-S',
+      numero_pedido_compra: 'PC-S',
+      itens_rastreaveis: [
+        { numero_serie: 'SERIE-A', data_validade: '2027-01-01' },
+        { numero_serie: 'SERIE-B', data_validade: '2027-01-01' },
+      ],
+    });
 
   assert.equal(entrada.status, 201);
   const rastreabilidade = await request(app)
     .get('/api/v1/estoque/rastreabilidade?produto_id=1')
     .set('Authorization', `Bearer ${token}`);
-  const serieSelecionada = rastreabilidade.body.dados.find((item) => item.numero_serie === 'SERIE-B');
+  const serieSelecionada = rastreabilidade.body.dados.find(
+    (item) => item.numero_serie === 'SERIE-B',
+  );
   assert.ok(serieSelecionada);
 
   const saida = await request(app)
     .post('/api/v1/estoque/saidas')
     .set('Authorization', `Bearer ${token}`)
-    .send({ produto_id: 1, quantidade: 1, destinatario: 'Cliente A', motivo: 'Venda', numero_pedido_venda: 'PV-S', rastreabilidade_ids: [serieSelecionada.id] });
+    .send({
+      produto_id: 1,
+      quantidade: 1,
+      destinatario: 'Cliente A',
+      motivo: 'Venda',
+      numero_pedido_venda: 'PV-S',
+      rastreabilidade_ids: [serieSelecionada.id],
+    });
   assert.equal(saida.status, 201);
 
   const depois = await request(app)
     .get('/api/v1/estoque/rastreabilidade?produto_id=1')
     .set('Authorization', `Bearer ${token}`);
   assert.equal(depois.body.dados.find((item) => item.numero_serie === 'SERIE-B').status, 'SAIDA');
-  assert.equal(depois.body.dados.find((item) => item.numero_serie === 'SERIE-A').status, 'EM_ESTOQUE');
+  assert.equal(
+    depois.body.dados.find((item) => item.numero_serie === 'SERIE-A').status,
+    'EM_ESTOQUE',
+  );
 });
 
 test('saída exige pedido de venda e registra destinação', async () => {
-  const login=await request(app).post('/api/v1/auth/login').send({email:'gerente@teste.com',senha:'senha123'});const token=login.body.dados.token;
-  const bad=await request(app).post('/api/v1/estoque/saidas').set('Authorization',`Bearer ${token}`).send({produto_id:2,quantidade:1,destinatario:'Vendas',motivo:'Venda'});assert.equal(bad.status,400);
-  const ok=await request(app).post('/api/v1/estoque/saidas').set('Authorization',`Bearer ${token}`).send({produto_id:2,quantidade:1,destinatario:'Cliente A',motivo:'Venda',numero_pedido_venda:'PV-1'});assert.equal(ok.status,201);
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const bad = await request(app)
+    .post('/api/v1/estoque/saidas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ produto_id: 2, quantidade: 1, destinatario: 'Vendas', motivo: 'Venda' });
+  assert.equal(bad.status, 400);
+  const ok = await request(app)
+    .post('/api/v1/estoque/saidas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      produto_id: 2,
+      quantidade: 1,
+      destinatario: 'Cliente A',
+      motivo: 'Venda',
+      numero_pedido_venda: 'PV-1',
+    });
+  assert.equal(ok.status, 201);
 });
 
 test('devolução de cliente reaproveitável retorna estoque', async () => {
-  const login=await request(app).post('/api/v1/auth/login').send({email:'gerente@teste.com',senha:'senha123'});const token=login.body.dados.token;
-  const antes=(await request(app).get('/api/v1/produtos/2').set('Authorization',`Bearer ${token}`)).body.dados.estoque_atual;
-  const r=await request(app).post('/api/v1/estoque/devolucoes').set('Authorization',`Bearer ${token}`).send({produto_id:2,quantidade:1,origem:'CLIENTE',motivo:'Troca',estado_produto:'INTACTO',numero_pedido_venda:'PV-D',reaproveitavel:true});
-  assert.equal(r.status,201);const depois=(await request(app).get('/api/v1/produtos/2').set('Authorization',`Bearer ${token}`)).body.dados.estoque_atual;assert.equal(depois,antes+1);
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const saida = await request(app)
+    .post('/api/v1/estoque/saidas')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      produto_id: 2,
+      quantidade: 1,
+      destinatario: 'Cliente',
+      motivo: 'Venda',
+      numero_pedido_venda: 'PV-D',
+    });
+  assert.equal(saida.status, 201);
+  const antes = (
+    await request(app).get('/api/v1/produtos/2').set('Authorization', `Bearer ${token}`)
+  ).body.dados.estoque_atual;
+  const r = await request(app)
+    .post('/api/v1/estoque/devolucoes')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      produto_id: 2,
+      quantidade: 1,
+      origem: 'CLIENTE',
+      motivo: 'Troca',
+      estado_produto: 'INTACTO',
+      numero_pedido_venda: 'PV-D',
+      reaproveitavel: true,
+    });
+  assert.equal(r.status, 201);
+  const depois = (
+    await request(app).get('/api/v1/produtos/2').set('Authorization', `Bearer ${token}`)
+  ).body.dados.estoque_atual;
+  assert.equal(depois, antes + 1);
 });
 
-test('dashboard e relatório consolidam estoque', async()=>{const login=await request(app).post('/api/v1/auth/login').send({email:'gerente@teste.com',senha:'senha123'});const token=login.body.dados.token;const d=await request(app).get('/api/v1/dashboard/resumo').set('Authorization',`Bearer ${token}`);const r=await request(app).get('/api/v1/estoque/relatorios').set('Authorization',`Bearer ${token}`);assert.equal(d.status,200);assert.equal(r.status,200);assert.ok(Array.isArray(r.body.dados.estoque));});
+test('dashboard e relatório consolidam estoque', async () => {
+  const login = await request(app)
+    .post('/api/v1/auth/login')
+    .send({ email: 'gerente@teste.com', senha: 'senha123' });
+  const token = login.body.dados.token;
+  const d = await request(app)
+    .get('/api/v1/dashboard/resumo')
+    .set('Authorization', `Bearer ${token}`);
+  const r = await request(app)
+    .get('/api/v1/estoque/relatorios')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(d.status, 200);
+  assert.equal(r.status, 200);
+  assert.ok(Array.isArray(r.body.dados.estoque));
+});

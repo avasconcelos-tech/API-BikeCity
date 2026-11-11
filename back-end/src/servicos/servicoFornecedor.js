@@ -38,6 +38,22 @@ function erroCnpj(status, mensagem) {
   throw new ErroNegocio(status, mensagem);
 }
 
+function validarCnpjObrigatorio(valor) {
+  if (typeof valor !== 'string' || !valor.trim()) {
+    throw new ErroNegocio(400, 'CNPJ é obrigatório.');
+  }
+  const cnpj = normalizarCnpj(valor);
+  if (cnpj === undefined) throw new ErroNegocio(400, 'CNPJ inválido');
+  return cnpj;
+}
+
+function validarContatoObrigatorio(valor) {
+  if (typeof valor !== 'string' || !valor.trim()) {
+    throw new ErroNegocio(400, 'Contato é obrigatório.');
+  }
+  return valor.trim();
+}
+
 function listarFornecedores(incluirInativos = false) {
   return repositorio.listarFornecedores(incluirInativos);
 }
@@ -54,8 +70,8 @@ async function criarFornecedor(data) {
     throw new ErroNegocio(400, 'Nome do fornecedor é obrigatório');
   }
 
-  const cnpj = normalizarCnpj(data?.cnpj);
-  if (cnpj === undefined) return erroCnpj(400, 'CNPJ inválido');
+  const cnpj = validarCnpjObrigatorio(data?.cnpj);
+  const contato = validarContatoObrigatorio(data?.contato);
   if (cnpj && (await repositorio.existeCnpj(cnpj))) return erroCnpj(409, 'CNPJ já cadastrado');
 
   let fornecedor;
@@ -63,7 +79,7 @@ async function criarFornecedor(data) {
     fornecedor = await repositorio.criarFornecedor({
       nome: nome.trim(),
       cnpj,
-      contato: data?.contato ?? null,
+      contato,
     });
   } catch (erro) {
     if (String(erro.message).includes('UNIQUE')) throw new ErroNegocio(409, 'CNPJ já cadastrado');
@@ -76,8 +92,8 @@ async function criarFornecedor(data) {
 async function atualizarFornecedor(id, data) {
   const nome = data?.nome;
   if (!validarNome(nome)) throw new ErroNegocio(400, 'Nome do fornecedor é obrigatório');
-  const cnpj = normalizarCnpj(data?.cnpj);
-  if (cnpj === undefined) return erroCnpj(400, 'CNPJ inválido');
+  const cnpj = validarCnpjObrigatorio(data?.cnpj);
+  const contato = validarContatoObrigatorio(data?.contato);
   if (cnpj && (await repositorio.existeCnpj(cnpj, id))) return erroCnpj(409, 'CNPJ já cadastrado');
 
   let fornecedor;
@@ -85,7 +101,7 @@ async function atualizarFornecedor(id, data) {
     fornecedor = await repositorio.atualizarFornecedor(id, {
       nome: nome.trim(),
       cnpj,
-      contato: data?.contato ?? null,
+      contato,
     });
   } catch (erro) {
     if (String(erro.message).includes('UNIQUE')) throw new ErroNegocio(409, 'CNPJ já cadastrado');

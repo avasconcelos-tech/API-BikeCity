@@ -11,6 +11,48 @@ const podeEditar = ['ANALISTA', 'GERENTE'].includes(usuario?.perfil);
 let fornecedorEmEdicao = null;
 let fornecedores = [];
 
+function formatarCnpj(valor) {
+  const cnpj = String(valor || '')
+    .replace(/[^a-z\d]/gi, '')
+    .toUpperCase()
+    .slice(0, 14);
+  if (cnpj.length <= 2) return cnpj;
+  if (cnpj.length <= 5) return `${cnpj.slice(0, 2)}.${cnpj.slice(2)}`;
+  if (cnpj.length <= 8) return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5)}`;
+  if (cnpj.length <= 12)
+    return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8)}`;
+  return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
+}
+
+function validarCnpj(valor) {
+  const cnpj = String(valor || '')
+    .replace(/[./-]/g, '')
+    .toUpperCase();
+  if (!/^[A-Z0-9]{12}\d{2}$/.test(cnpj) || /^([A-Z0-9])\1{11}\d{2}$/.test(cnpj)) return false;
+  const calcularDigito = (base, pesos) => {
+    const soma = [...base].reduce(
+      (total, digito, indice) => total + (digito.charCodeAt(0) - 48) * pesos[indice],
+      0,
+    );
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  const primeiroDigito = calcularDigito(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const segundoDigito = calcularDigito(
+    cnpj.slice(0, 12) + primeiroDigito,
+    [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+  );
+  return Number(cnpj[12]) === primeiroDigito && Number(cnpj[13]) === segundoDigito;
+}
+
+function atualizarCnpj() {
+  const campo = $('fornecedor-cnpj');
+  campo.value = formatarCnpj(campo.value);
+  campo.setCustomValidity(
+    validarCnpj(campo.value) ? '' : 'Informe um CNPJ válido, incluindo os dígitos verificadores.',
+  );
+}
+
 function fecharFormulario() {
   $('form-fornecedor').reset();
   fornecedorEmEdicao = null;
@@ -25,6 +67,7 @@ function abrirFormulario(fornecedor = null) {
     : 'Cadastrar fornecedor';
   $('fornecedor-nome').value = fornecedor?.nome || '';
   $('fornecedor-cnpj').value = fornecedor?.cnpj || '';
+  atualizarCnpj();
   $('fornecedor-contato').value = fornecedor?.contato || '';
   $('secao-formulario-fornecedor').hidden = false;
   $('fornecedor-nome').focus();
@@ -59,6 +102,7 @@ async function carregar() {
 $('btn-novo-fornecedor').hidden = !podeEditar;
 $('btn-novo-fornecedor').addEventListener('click', () => abrirFormulario());
 $('btn-cancelar-fornecedor').addEventListener('click', fecharFormulario);
+$('fornecedor-cnpj').addEventListener('input', atualizarCnpj);
 $('form-fornecedor').addEventListener('submit', async (evento) => {
   evento.preventDefault();
   const botao = evento.target.querySelector('button[type="submit"]');

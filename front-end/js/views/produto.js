@@ -143,8 +143,12 @@ async function alterarAtivo(id, ativo) {
 $('form-produto').addEventListener('submit', async (evento) => {
   evento.preventDefault();
   const formulario = evento.target;
-  const botao = formulario.querySelector('button[type="submit"]');
+  const botao = formulario.querySelector('#btn-salvar-produto');
+  const textoOriginal = botao.textContent;
   botao.disabled = true;
+  botao.classList.add('is-loading');
+  botao.setAttribute('aria-busy', 'true');
+  botao.textContent = 'Salvando...';
   const dados = {
     nome: $('nome').value.trim(),
     codigo_interno: $('codigo_interno').value.trim(),
@@ -173,6 +177,9 @@ $('form-produto').addEventListener('submit', async (evento) => {
     mostrarToast(erro.message || 'Não foi possível salvar o produto.', 'erro');
   } finally {
     botao.disabled = false;
+    botao.classList.remove('is-loading');
+    botao.removeAttribute('aria-busy');
+    botao.textContent = textoOriginal;
   }
 });
 

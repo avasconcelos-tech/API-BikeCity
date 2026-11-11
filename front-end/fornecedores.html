@@ -24,12 +24,23 @@
               </div>
               <div class="form-group">
                 <label for="fornecedor-cnpj">CNPJ</label>
-                <input id="fornecedor-cnpj" inputmode="numeric" />
+                <input
+                  id="fornecedor-cnpj"
+                  inputmode="text"
+                  autocomplete="off"
+                  maxlength="18"
+                  placeholder="00.000.000/0000-00"
+                  required
+                  aria-describedby="fornecedor-cnpj-ajuda"
+                />
+                <small id="fornecedor-cnpj-ajuda" class="field-help">
+                  CNPJ obrigatório, com dígitos verificadores válidos.
+                </small>
               </div>
             </div>
             <div class="form-group">
               <label for="fornecedor-contato">Contato</label>
-              <input id="fornecedor-contato" placeholder="E-mail ou telefone" />
+              <input id="fornecedor-contato" placeholder="E-mail ou telefone" required />
             </div>
             <button type="submit">Salvar fornecedor</button>
             <button id="btn-cancelar-fornecedor" class="btn-secondary" type="button">

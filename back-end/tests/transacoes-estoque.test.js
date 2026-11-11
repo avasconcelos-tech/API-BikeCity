@@ -32,16 +32,23 @@ test('manual stock adjustment rolls back balance and history when movement inser
   }
   assert.equal(await scalar('SELECT estoque_atual FROM produtos WHERE id = 2'), estoqueInicial);
   assert.equal(
-    await scalar("SELECT COUNT(*) AS total FROM movimentacoes WHERE produto_id = 2 AND tipo = 'AJUSTE_MANUAL'"),
+    await scalar(
+      "SELECT COUNT(*) AS total FROM movimentacoes WHERE produto_id = 2 AND tipo = 'AJUSTE_MANUAL'",
+    ),
     0,
   );
   assert.equal(
-    await scalar("SELECT COUNT(*) AS total FROM auditoria WHERE produto_id = 2 AND acao = 'AJUSTE_MANUAL'"),
+    await scalar(
+      "SELECT COUNT(*) AS total FROM auditoria WHERE produto_id = 2 AND acao = 'AJUSTE_MANUAL'",
+    ),
     0,
   );
 });
 
 test('returns roll back and balance does not change when movement insertion fails', async () => {
+  await servicoEstoque.registrarSaida(2, 1, 'Cliente', 'Venda', 1, {
+    numero_pedido_venda: 'PV-TESTE',
+  });
   const estoqueInicial = await scalar('SELECT estoque_atual FROM produtos WHERE id = 2');
   const original = repositorioEstoque.adicionarMovimentacao;
   repositorioEstoque.adicionarMovimentacao = async () => {
@@ -69,7 +76,9 @@ test('returns roll back and balance does not change when movement insertion fail
   assert.equal(await scalar('SELECT estoque_atual FROM produtos WHERE id = 2'), estoqueInicial);
   assert.equal(await scalar('SELECT COUNT(*) AS total FROM devolucoes WHERE produto_id = 2'), 0);
   assert.equal(
-    await scalar("SELECT COUNT(*) AS total FROM movimentacoes WHERE produto_id = 2 AND tipo = 'DEVOLUCAO'"),
+    await scalar(
+      "SELECT COUNT(*) AS total FROM movimentacoes WHERE produto_id = 2 AND tipo = 'DEVOLUCAO'",
+    ),
     0,
   );
 });
@@ -163,6 +172,9 @@ test('traced returns require selected items and update traceability state', asyn
     numero_serie: 'BAT-DEV-1',
     data_validade: '2027-01-01',
   });
+  await servicoEstoque.registrarSaida(2, 1, 'Cliente', 'Venda', 1, {
+    numero_pedido_venda: 'PV-DEV',
+  });
   const devolucao = {
     produto_id: 2,
     quantidade: 1,
@@ -183,6 +195,71 @@ test('traced returns require selected items and update traceability state', asyn
   assert.equal(
     await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [rastreabilidade.id]),
     'EM_ESTOQUE',
+  );
+});
+
+test('customer returns are limited to shipped quantity and update commercial order status', async () => {
+  await servicoEstoque.registrarSaida(2, 2, 'Cliente', 'Venda', 1, {
+    numero_pedido_venda: 'PV-NAO-VENDIDO',
+  });
+  const inicial = await servicoEstoque.consultarQuantidadeDevolucao('PV-NAO-VENDIDO', 2);
+  assert.equal(inicial.quantidade_disponivel, 2);
+
+  const parcial = await servicoEstoque.registrarDevolucao(
+    {
+      produto_id: 2,
+      quantidade: 1,
+      origem: 'CLIENTE',
+      motivo: 'Item não vendido',
+      estado_produto: 'INTACTO',
+      numero_pedido_venda: 'PV-NAO-VENDIDO',
+      nao_vendido: true,
+    },
+    1,
+  );
+  assert.equal(parcial.status_comercial_pedido, 'DEVOLUCAO_PARCIAL');
+  assert.equal(
+    (await servicoEstoque.consultarQuantidadeDevolucao('PV-NAO-VENDIDO', 2)).quantidade_disponivel,
+    1,
+  );
+
+  await assert.rejects(
+    servicoEstoque.registrarDevolucao(
+      {
+        produto_id: 2,
+        quantidade: 2,
+        origem: 'CLIENTE',
+        motivo: 'Excede o pedido',
+        estado_produto: 'INTACTO',
+        numero_pedido_venda: 'PV-NAO-VENDIDO',
+      },
+      1,
+    ),
+    (erro) => erro instanceof ErroNegocio && erro.status === 400,
+  );
+
+  const final = await servicoEstoque.registrarDevolucao(
+    {
+      produto_id: 2,
+      quantidade: 1,
+      origem: 'CLIENTE',
+      motivo: 'Item não vendido',
+      estado_produto: 'INTACTO',
+      numero_pedido_venda: 'PV-NAO-VENDIDO',
+      nao_vendido: true,
+    },
+    1,
+  );
+  assert.equal(final.status_comercial_pedido, 'NAO_VENDIDO');
+  assert.equal(
+    await scalar('SELECT status_comercial FROM pedidos_venda WHERE numero_pedido_venda = ?', [
+      'PV-NAO-VENDIDO',
+    ]),
+    'NAO_VENDIDO',
+  );
+  assert.equal(
+    (await servicoEstoque.consultarQuantidadeDevolucao('PV-NAO-VENDIDO', 2)).quantidade_disponivel,
+    0,
   );
 });
 
@@ -208,8 +285,14 @@ test('sales without selected identifiers use FEFO for items with expiration date
     numero_pedido_venda: 'PV-FEFO',
   });
   assert.ok(resultado.movimentacao_id);
-  assert.equal(await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [antiga.id]), 'SAIDA');
-  assert.equal(await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [nova.id]), 'EM_ESTOQUE');
+  assert.equal(
+    await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [antiga.id]),
+    'SAIDA',
+  );
+  assert.equal(
+    await scalar('SELECT status FROM rastreabilidade WHERE id = ?', [nova.id]),
+    'EM_ESTOQUE',
+  );
 });
 
 test('reversing a tracked sale restores its identifiers and cannot be repeated', async () => {
@@ -232,7 +315,10 @@ test('reversing a tracked sale restores its identifiers and cannot be repeated',
   );
 
   assert.equal(await scalar('SELECT estoque_atual FROM produtos WHERE id = 2'), 1);
-  assert.equal(await scalar('SELECT status FROM rastreabilidade WHERE numero_serie = ?', ['SERIE-ESTORNO']), 'EM_ESTOQUE');
+  assert.equal(
+    await scalar('SELECT status FROM rastreabilidade WHERE numero_serie = ?', ['SERIE-ESTORNO']),
+    'EM_ESTOQUE',
+  );
   assert.equal(estorno.movimentacao_origem_id, saida.movimentacao_id);
   await assert.rejects(
     servicoEstoque.registrarEstorno(saida.movimentacao_id, 1, 'Segundo cancelamento'),

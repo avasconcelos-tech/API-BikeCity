@@ -84,7 +84,7 @@
             <div class="form-group">
               <label>Observação</label><textarea id="obs-entrada"></textarea>
             </div>
-            <button>Confirmar Entrada</button>
+            <button type="submit">Confirmar Entrada</button>
           </form>
         </section>
         <section>
@@ -133,7 +133,7 @@
                 <label>Localização/rota</label><input id="localizacao-saida" />
               </div>
             </div>
-            <button>Confirmar Saída</button>
+            <button type="submit">Confirmar Saída</button>
           </form>
         </section>
         <section>
@@ -145,9 +145,11 @@
                 ><select id="produto-devolucao" required></select>
               </div>
               <div class="form-group">
-                <label>Quantidade</label><input id="qtd-devolucao" type="number" min="1" required />
+                <label>Quantidade</label
+                ><input id="qtd-devolucao" type="number" min="1" step="1" required />
               </div>
             </div>
+            <small id="info-quantidade-devolucao" class="field-help" role="status"></small>
             <div class="form-row">
               <div class="form-group">
                 <label>Origem</label
@@ -171,11 +173,20 @@
             <div class="form-group">
               <label>Motivo</label><textarea id="motivo-devolucao" required></textarea>
             </div>
-            <label><input id="reaproveitavel" type="checkbox" /> Produto reaproveitável</label>
+            <div class="return-options">
+              <label class="return-option" for="reaproveitavel">
+                <input id="reaproveitavel" type="checkbox" />
+                <span>Produto reaproveitável</span>
+              </label>
+              <label class="return-option" for="nao-vendido">
+                <input id="nao-vendido" type="checkbox" />
+                <span>Retorno porque o produto não foi vendido</span>
+              </label>
+            </div>
             <div class="form-group">
               <label>Observação</label><textarea id="obs-devolucao"></textarea>
             </div>
-            <button>Registrar Devolução</button>
+            <button type="submit">Registrar Devolução</button>
           </form>
         </section>
         <section id="secao-ajuste">
@@ -193,7 +204,7 @@
             <div class="form-group">
               <label>Justificativa</label><textarea id="justificativa" required></textarea>
             </div>
-            <button>Registrar Ajuste</button>
+            <button type="submit">Registrar Ajuste</button>
           </form>
         </section>
         <section>
@@ -208,6 +219,7 @@
                   <th>Qtd.</th>
                   <th>Alteração</th>
                   <th>Destinação</th>
+                  <th>Pedido</th>
                   <th>Motivo</th>
                   <th>Data</th>
                 </tr>

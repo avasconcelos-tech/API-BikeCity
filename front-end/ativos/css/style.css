@@ -283,6 +283,56 @@ section {
   font-size: 0.8rem;
   font-weight: 750;
 }
+.return-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+.return-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  line-height: 1.4;
+}
+.return-option input {
+  width: auto;
+  min-width: 18px;
+  margin: 0;
+  accent-color: var(--green-700);
+}
+.return-option span {
+  overflow-wrap: anywhere;
+}
+.return-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 2px 4px 2px 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.return-badge.is-reusable {
+  color: #176345;
+  background: var(--green-100);
+}
+.return-badge.is-not-reusable {
+  color: #754d00;
+  background: #fff3d4;
+}
+.return-badge.is-unsold {
+  color: var(--blue-900);
+  background: var(--blue-100);
+}
 .notification-list {
   display: grid;
   gap: 10px;
@@ -435,6 +485,13 @@ textarea {
   min-height: 90px;
   resize: vertical;
 }
+.field-help {
+  display: block;
+  margin: -6px 0 14px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
 
 button {
   width: auto;
@@ -458,6 +515,26 @@ button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+button.is-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+button.is-loading::before {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  content: '';
+  animation: button-spin 0.7s linear infinite;
+}
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .btn-secondary {
   background: var(--green-700);
