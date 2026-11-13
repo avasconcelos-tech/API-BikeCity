@@ -51,7 +51,17 @@
         <section class="dashboard-alertas" aria-labelledby="titulo-alertas-dashboard">
           <div class="section-heading">
             <h2 id="titulo-alertas-dashboard">Alertas e notificações</h2>
-            <span id="contador-alertas-dashboard" class="status-badge">0 pendentes</span>
+            <div class="dashboard-alert-controls">
+              <button
+                id="btn-toggle-alertas-lidos"
+                class="btn-secondary"
+                type="button"
+                aria-pressed="false"
+              >
+                Ver alertas lidos
+              </button>
+              <span id="contador-alertas-dashboard" class="status-badge">0 pendentes</span>
+            </div>
           </div>
           <div id="lista-alertas-dashboard" class="notification-list"></div>
         </section>

@@ -267,6 +267,7 @@ section {
 }
 .section-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -274,6 +275,11 @@ section {
 }
 .section-heading h2 {
   margin-bottom: 0;
+}
+.dashboard-alert-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .status-badge {
   padding: 5px 10px;
@@ -784,11 +790,30 @@ tbody tr:hover {
     content: '';
     display: block;
   }
+  .mobile-menu-btn span {
+    position: relative;
+    transition: background 0.18s ease;
+  }
+  .mobile-menu-btn span::before,
+  .mobile-menu-btn span::after {
+    position: absolute;
+    left: 0;
+    transition: transform 0.18s ease;
+  }
   .mobile-menu-btn span::before {
-    transform: translateY(-6px);
+    top: -6px;
   }
   .mobile-menu-btn span::after {
-    transform: translateY(4px);
+    top: 6px;
+  }
+  .sidebar.open .mobile-menu-btn span {
+    background: transparent;
+  }
+  .sidebar.open .mobile-menu-btn span::before {
+    transform: translateY(6px) rotate(45deg);
+  }
+  .sidebar.open .mobile-menu-btn span::after {
+    transform: translateY(-6px) rotate(-45deg);
   }
   .sidebar-nav {
     display: none;

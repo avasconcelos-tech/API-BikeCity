@@ -21,6 +21,7 @@ if (!checarAutenticacao()) throw new Error('Não autenticado');
 
 const $ = (id) => document.getElementById(id);
 let produtos = [];
+let exibirAlertasLidos = false;
 
 function abrirProdutos(titulo, lista) {
   $('titulo-produtos-dashboard').textContent = titulo;
@@ -79,26 +80,30 @@ function renderizarAlertas(alertas, notificacoes) {
     grupo.registros.push(item);
     grupos.set(chave, grupo);
   };
-  alertas.forEach((alerta) =>
-    adicionarAoGrupo({
-      id: alerta.id,
-      produto_id: alerta.produto_id,
-      tipo: 'alerta',
-      titulo: alerta.produto_nome || 'Alerta de estoque',
-      mensagem: alerta.mensagem,
-      lido: alerta.lido,
-    }),
-  );
-  notificacoes.forEach((notificacao) =>
-    adicionarAoGrupo({
-      id: notificacao.id,
-      produto_id: notificacao.produto_id,
-      tipo: 'notificacao',
-      titulo: notificacao.titulo,
-      mensagem: notificacao.mensagem,
-      lido: notificacao.lida,
-    }),
-  );
+  alertas
+    .filter((alerta) => exibirAlertasLidos || !alerta.lido)
+    .forEach((alerta) =>
+      adicionarAoGrupo({
+        id: alerta.id,
+        produto_id: alerta.produto_id,
+        tipo: 'alerta',
+        titulo: alerta.produto_nome || 'Alerta de estoque',
+        mensagem: alerta.mensagem,
+        lido: alerta.lido,
+      }),
+    );
+  notificacoes
+    .filter((notificacao) => exibirAlertasLidos || !notificacao.lida)
+    .forEach((notificacao) =>
+      adicionarAoGrupo({
+        id: notificacao.id,
+        produto_id: notificacao.produto_id,
+        tipo: 'notificacao',
+        titulo: notificacao.titulo,
+        mensagem: notificacao.mensagem,
+        lido: notificacao.lida,
+      }),
+    );
   const itens = [...grupos.values()];
   const pendentes = itens.filter((item) => item.registros.some((registro) => !registro.lido)).length;
   $('contador-alertas-dashboard').textContent =
@@ -109,7 +114,10 @@ function renderizarAlertas(alertas, notificacoes) {
         const lido = item.registros.every((registro) => registro.lido);
         return `<article class="notification-item ${lido ? 'is-read' : ''}"><div><strong>${escaparHtml(item.titulo)}</strong><p>${escaparHtml(item.mensagem)}</p></div>${!lido ? `<button type="button" class="btn-marcar-alerta" data-indice="${indice}">Marcar como lido</button>` : '<span class="notification-status">Lido</span>'}</article>`;
       })
-      .join('') || '<p>Nenhuma notificação registrada.</p>';
+      .join('') ||
+    (exibirAlertasLidos
+      ? '<p>Nenhuma notificação registrada.</p>'
+      : '<p>Nenhuma notificação pendente.</p>');
   lista.querySelectorAll('.btn-marcar-alerta').forEach((botao) =>
     botao.addEventListener('click', async () => {
       botao.disabled = true;
@@ -153,13 +161,24 @@ async function carregar() {
       getNotificacoes(),
     ]);
     produtos = respostaProdutos.dados || [];
+    const alertas = respostaAlertas.dados || [];
+    const notificacoes = respostaNotificacoes.dados || [];
     const dados = resumo.dados;
     const produtosEmAlerta = produtos.filter(estaEmAlerta);
 
     $('total-produtos').textContent = dados.total_produtos || 0;
     $('estoque-critico').textContent = dados.estoque_critico || 0;
     $('valor-estoque').textContent = formatarMoeda(dados.valor_total_estoque || 0);
-    renderizarAlertas(respostaAlertas.dados || [], respostaNotificacoes.dados || []);
+    renderizarAlertas(alertas, notificacoes);
+    const botaoAlertasLidos = $('btn-toggle-alertas-lidos');
+    botaoAlertasLidos.addEventListener('click', () => {
+      exibirAlertasLidos = !exibirAlertasLidos;
+      botaoAlertasLidos.setAttribute('aria-pressed', String(exibirAlertasLidos));
+      botaoAlertasLidos.textContent = exibirAlertasLidos
+        ? 'Ocultar alertas lidos'
+        : 'Ver alertas lidos';
+      renderizarAlertas(alertas, notificacoes);
+    });
 
     ativarCard('card-total-produtos', () => abrirProdutos('Todos os produtos', produtos));
     ativarCard('card-estoque-critico', () =>

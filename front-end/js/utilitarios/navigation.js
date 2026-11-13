@@ -22,8 +22,8 @@ function criarSidebar(sidebar) {
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="8" cy="23" r="5"></circle><circle cx="24" cy="23" r="5"></circle><path d="M8 23l6-11 5 11m-5-11h5l5 11M11 7h4"></path></svg></span>
       <span class="brand-name">Bike<span>City</span></span>
     </a>
-    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false"><span></span></button>
-    <ul class="sidebar-nav">${paginasVisiveis.map(([href, nome]) => `<li><a href="${href}">${nome}</a></li>`).join('')}</ul>`;
+    <button class="mobile-menu-btn" type="button" aria-label="Abrir menu" aria-controls="sidebar-nav" aria-expanded="false"><span aria-hidden="true"></span></button>
+    <ul id="sidebar-nav" class="sidebar-nav">${paginasVisiveis.map(([href, nome]) => `<li><a href="${href}">${nome}</a></li>`).join('')}</ul>`;
 }
 
 function criarCabecalho(main) {
@@ -96,12 +96,24 @@ export function inicializarNavegacao() {
   marcarPaginaAtual(sidebar);
 
   const button = sidebar.querySelector('.mobile-menu-btn');
+  const fecharMenu = () => {
+    sidebar.classList.remove('open');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-label', 'Abrir menu');
+  };
   button.addEventListener('click', () => {
     const aberto = sidebar.classList.toggle('open');
     button.setAttribute('aria-expanded', String(aberto));
+    button.setAttribute('aria-label', aberto ? 'Fechar menu' : 'Abrir menu');
   });
 
   sidebar.querySelectorAll('.sidebar-nav a').forEach((link) => {
-    link.addEventListener('click', () => sidebar.classList.remove('open'));
+    link.addEventListener('click', fecharMenu);
+  });
+  sidebar.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && sidebar.classList.contains('open')) {
+      fecharMenu();
+      button.focus();
+    }
   });
 }
