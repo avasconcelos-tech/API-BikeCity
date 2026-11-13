@@ -82,18 +82,20 @@ function renderizarProdutos() {
   });
   $('tbody-produtos').innerHTML =
     lista
-      .map(
-        (produto) =>
-          `<tr><td>${escaparHtml(produto.id)}</td><td>${escaparHtml(produto.codigo_interno || '-')}</td><td>${escaparHtml(produto.nome)}</td><td>${escaparHtml(produto.categoria)}</td><td>${escaparHtml(produto.localizacao_deposito || '-')}</td><td>R$ ${Number(
-            produto.custo || 0,
-          )
-            .toFixed(2)
-            .replace(
-              '.',
-              ',',
-            )}</td><td>${escaparHtml(produto.estoque_atual)}</td><td>${produto.ativo ? (estaEmAlerta(produto) ? 'Baixo' : 'Normal') : 'Inativo'}</td>${podeEditar ? `<td><button type="button" class="btn-editar-produto" data-id="${escaparHtml(produto.id)}">Editar</button>${produto.ativo ? ` <button type="button" class="btn-inativar-produto" data-id="${escaparHtml(produto.id)}">Inativar</button>` : ` <button type="button" class="btn-reativar-produto" data-id="${escaparHtml(produto.id)}">Reativar</button>`}</td>` : ''}</tr>`,
-      )
-      .join('') || `<tr><td colspan="${podeEditar ? 9 : 8}">Nenhum produto encontrado.</td></tr>`;
+      .map((produto) => {
+        const imagem = produto.imagem_url
+          ? `<img class="product-image" src="${escaparHtml(produto.imagem_url)}" alt="Imagem de ${escaparHtml(produto.nome)}" loading="lazy">`
+          : 'Sem imagem';
+        return `<tr><td>${escaparHtml(produto.id)}</td><td>${imagem}</td><td>${escaparHtml(produto.codigo_interno || '-')}</td><td>${escaparHtml(produto.nome)}</td><td>${escaparHtml(produto.categoria)}</td><td>${escaparHtml(produto.localizacao_deposito || '-')}</td><td>R$ ${Number(
+          produto.custo || 0,
+        )
+          .toFixed(2)
+          .replace(
+            '.',
+            ',',
+          )}</td><td>${escaparHtml(produto.estoque_atual)}</td><td>${produto.ativo ? (estaEmAlerta(produto) ? 'Baixo' : 'Normal') : 'Inativo'}</td>${podeEditar ? `<td><button type="button" class="btn-editar-produto" data-id="${escaparHtml(produto.id)}">Editar</button>${produto.ativo ? ` <button type="button" class="btn-inativar-produto" data-id="${escaparHtml(produto.id)}">Inativar</button>` : ` <button type="button" class="btn-reativar-produto" data-id="${escaparHtml(produto.id)}">Reativar</button>`}</td>` : ''}</tr>`;
+      })
+      .join('') || `<tr><td colspan="${podeEditar ? 10 : 9}">Nenhum produto encontrado.</td></tr>`;
   document
     .querySelectorAll('.btn-editar-produto')
     .forEach((botao) =>
